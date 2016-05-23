@@ -2,11 +2,12 @@
 #include<stdlib.h>
 #include<time.h>
 
+
 #define Max_Number 5
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
-void Include_All(int *, int, int*);
-void Change_List(int *);
+void Include_All(int *, int, int*); //collect all array 
+void Change_List(int *); //List from small to large
 
 
 int main()
