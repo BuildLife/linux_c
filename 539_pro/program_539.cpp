@@ -49,7 +49,7 @@ int main()
 	return 0;
 }
 
-
+/**/
 void Include_All(int *Com,int rNum,int *s)
 {
 	*(Com + *s) = rNum;
