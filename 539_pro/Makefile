@@ -1,0 +1,8 @@
+obj
+
+all:
+
+
+
+clean:
+	
