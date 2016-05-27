@@ -9,11 +9,7 @@
 void Include_All(int *, int, int*); //collect all array 
 void Change_List(int *); //List from small to large
 
-<<<<<<< HEAD
-//1234566
-=======
-//TEST
->>>>>>> 7ea42c781fa40f8a9189f71cfcb5fef8de872814
+//CHANGE THE CODE
 int main()
 {
 	int NumberOne,NumberTwo,NumberThree,NumberFour,NumberFive;
