@@ -9,7 +9,7 @@
 void Include_All(int *, int, int*); //collect all array 
 void Change_List(int *); //List from small to large
 
-
+//1234566
 int main()
 {
 	int NumberOne,NumberTwo,NumberThree,NumberFour,NumberFive;
@@ -57,22 +57,20 @@ void Include_All(int *Com,int rNum,int *s)
 }
 void Change_List(int *List)
 {
-		int j=0;
-		int i=0;
-		int x = 0;
-		int temp;
-		for(i=0;i<Max_Number-1;i++)
+	int j=0;
+	int i=0;
+	int x = 0;
+	int temp;
+	for(i=0;i<Max_Number-1;i++)
+	{
+		for(j=i+1;j<Max_Number;j++)
 		{
-			for(j=i+1;j<Max_Number;j++)
+			if( *(List+j) < *(List+i) )
 			{
-				if( *(List+j) < *(List+i) )
-				{
-					temp = *(List+j);
-					*(List+j) = *(List+i);
-					*(List+i) = temp;
-				}
-			
+				temp = *(List+j);
+				*(List+j) = *(List+i);
+				*(List+i) = temp;
 			}
-			
-		}
+		}	
+	}
 }
