@@ -6,7 +6,7 @@
 #define Max_Number 5
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
-void Collect_Array();
+void Collect_Array(int *,int*,int*,int*,int*);
 void Include_All(int *, int, int*); //collect all array 
 void Change_List(int *); //List from small to large
 
@@ -57,7 +57,7 @@ void Include_All(int *Com,int rNum,int *s)
 }
 
 /**/
-void Collect_Array()
+void Collect_Array(int *,int*,int*,int*,int*)
 {
 	
 	
