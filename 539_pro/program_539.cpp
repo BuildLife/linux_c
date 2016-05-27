@@ -6,10 +6,10 @@
 #define Max_Number 5
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
+void Collect_Array();
 void Include_All(int *, int, int*); //collect all array 
 void Change_List(int *); //List from small to large
 
-//CHANGE THE CODE
 int main()
 {
 	int NumberOne,NumberTwo,NumberThree,NumberFour,NumberFive;
@@ -55,6 +55,14 @@ void Include_All(int *Com,int rNum,int *s)
 	*(Com + *s) = rNum;
 	*s+=1;
 }
+
+/**/
+void Collect_Array()
+{
+	
+	
+}
+
 void Change_List(int *List)
 {
 	int j=0;
