@@ -56,11 +56,17 @@ void Include_All(int *Com,int rNum,int *s)
 	*s+=1;
 }
 
-/**/
 void Collect_Array(int *aCom, int* bCom, int* cCom, int* dCom, int* eCom,int *len)
 {
+	int tNumbers = 0;
+	int CHANGENUMBER = 0;
+	
+	for(tNumbers = 0;tNumbers < NELNES(*aCom);tNumbers++)
+	{
+		
 	
 	
+	}
 }
 
 void Change_List(int *List)
