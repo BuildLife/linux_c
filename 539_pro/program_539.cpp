@@ -4,9 +4,19 @@
 
 
 #define Max_Number 5
+#define MScript_Number 10
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
-void Collect_Array(int *, int* ,int* ,int* ,int* ,int*);
+typedef struct NumberArray
+{
+	int Item_One[];
+	int Item_Two[];
+	int Item_Three[];
+	int Item_Four[];
+};
+
+
+void Collect_Array(int *, int* ,int* ,int* ,int*);
 void Include_All(int *, int, int*); //collect all array 
 void Change_List(int *); //List from small to large
 
@@ -14,8 +24,13 @@ int main()
 {
 	int NumberOne,NumberTwo,NumberThree,NumberFour,NumberFive;
 	int x = 0;
-	int y = Max_Number;
+	//int y = Max_Number;
 	int k;
+	
+	struct NumberArray NA_Collect = {{7,9,21,22,28,33,34,38,1,5},
+					{8,13,27,10,17,19,20,23,29,36},
+					{2,3,4,11,14,16,24,25,26,35},
+					{6,15,18,30,31,37,39,12,32}};
 
 	int ItemOne[] = {7,9,21,22,28,33,34,38,1,5};
 	int ItemTwo[] = {8,13,27,10,17,19,20,23,29,36};
@@ -24,6 +39,7 @@ int main()
 
 	int Complete[Max_Number];
 	
+	/*Random Number Printf....................*/
 	srand(time(NULL));
 
 	NumberOne = (rand()%NELEMS(ItemOne));	
@@ -42,10 +58,18 @@ int main()
 		Include_All(Complete,NumberFive,&x);
 
 	Change_List(Complete);
+	/*******************************************/
+
+
+	/*Collect all number array to new numbers*/
+	Collect_Array(NA_Collect.Item_One, NA_Collect.Item_Two, NA_Collect.Item_Three, NA_Collect.Item_Four,&x);
+
+
 	for(k=0;k<Max_Number;k++)
 	{
 		printf("%d,",Complete[k]);
 	}
+
 	return 0;
 }
 
@@ -56,7 +80,7 @@ void Include_All(int *Com,int rNum,int *s)
 	*s+=1;
 }
 
-void Collect_Array(int *aCom, int* bCom, int* cCom, int* dCom, int* eCom,int *len)
+void Collect_Array(int *aCom, int* bCom, int* cCom, int* dCom,int *len)
 {
 	int tNumbers = 0;
 	int CHANGENUMBER = 0;
