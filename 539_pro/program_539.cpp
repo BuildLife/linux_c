@@ -7,12 +7,23 @@
 #define MScript_Number 10
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
+
+#define Mon(x)  (x<<1)+2
+#define Tues(x) (x<<2)+1
+#define Wed(x) 	(x<<1)+2
+#define	Thurs(x) (x<<2)+1
+#define Fri(x)	(x<<1)+2
+#define Sat(x)	(x<<2)+1
+
+
+time_t Current_Time;
+
 typedef struct NumberArray
 {
-	int Item_One[];
-	int Item_Two[];
-	int Item_Three[];
-	int Item_Four[];
+	int Item_One[MScript_Number];
+	int Item_Two[MScript_Number];
+	int Item_Three[MScript_Number];
+	int Item_Four[MScript_Number];
 };
 
 
@@ -22,6 +33,12 @@ void Change_List(int *); //List from small to large
 
 int main()
 {
+
+	/*Get current times*/
+	struct tm *pt;
+	time(&Current_Time);
+	pt = localtime(&Current_Time);
+		
 	int NumberOne,NumberTwo,NumberThree,NumberFour,NumberFive;
 	int x = 0;
 	//int y = Max_Number;
@@ -69,6 +86,8 @@ int main()
 	{
 		printf("%d,",Complete[k]);
 	}
+	printf("\n");
+	printf("%d ",pt->tm_wday);
 
 	return 0;
 }
@@ -85,12 +104,11 @@ void Collect_Array(int *aCom, int* bCom, int* cCom, int* dCom,int *len)
 	int tNumbers = 0;
 	int CHANGENUMBER = 0;
 	
-	for(tNumbers = 0;tNumbers < NELNES(*aCom);tNumbers++)
+	for(tNumbers = 0;tNumbers < 10;tNumbers++)
 	{
-		
-	
-	
+		printf("%d,",*(aCom+tNumbers));
 	}
+	printf("\n");
 }
 
 void Change_List(int *List)
