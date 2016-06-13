@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<time.h>
+#include "pFuntion.h"
 
 
 #define Max_Number 5
@@ -8,13 +9,13 @@
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
 
-#define Mon(x)  (x<<1)+2
+/*#define Mon(x)  (x<<1)+2
 #define Tues(x) (x<<2)+1
 #define Wed(x) 	(x<<1)+2
 #define	Thurs(x) (x<<2)+1
 #define Fri(x)	(x<<1)+2
 #define Sat(x)	(x<<2)+1
-
+*/
 
 time_t Current_Time;
 
@@ -26,7 +27,7 @@ typedef struct NumberArray
 	int Item_Four[MScript_Number];
 };
 
-
+int Days_Add(int*,int);
 void Collect_Array(int *, int* ,int* ,int* ,int*);
 void Include_All(int *, int, int*); //collect all array 
 void Change_List(int *); //List from small to large
@@ -71,7 +72,7 @@ int main()
 	NumberFour = (rand()%NELEMS(ItemFour));
 		Include_All(Complete,ItemFour[NumberFour],&x);
 
-	NumberFive = (rand()%39)+1;
+	NumberFive = (rand()%39);
 		Include_All(Complete,NumberFive,&x);
 
 	Change_List(Complete);
@@ -87,7 +88,52 @@ int main()
 		printf("%d,",Complete[k]);
 	}
 	printf("\n");
-	printf("%d ",pt->tm_wday);
+	switch(pt->tm_wday)
+	{
+		case 1:
+			Days_Add(Complete,1);		
+		break;
+		case 2:
+			Days_Add(Complete,2);
+		break;
+		case 3:
+			Days_Add(Complete,3);
+		break;
+		case 4:
+			Days_Add(Complete,4);
+		break;
+
+		case 5:
+			Days_Add(Complete,5);
+		break;
+
+		case 6:
+			Days_Add(Complete,6);
+		break;
+
+	}
+	for(k=0;k<Max_Number;k++)
+	{
+		printf("%d, ",Complete[k]);
+	}
+	printf("\n");
+	//printf("%d ",pt->tm_wday);
+
+	return 0;
+}
+
+int Days_Add(int *Com,int Day)
+{
+	int i;
+	for(i=0;i<Max_Number;i++)
+	{
+		*(Com+i) = *(Com+i)+Day;
+		if(*(Com+i) > 39)
+		{
+
+			*(Com+i) = *(Com+i)-39;
+		}
+	}
 
 	return 0;
 }
