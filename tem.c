@@ -103,7 +103,7 @@ static unsigned int started=0;			//Indicate if we have started a read or not
 static unsigned char dht[5];			// For result bytes
 static int format = 0;		//Default result format
 static int gpio_pin = 0;		//Default GPIO pin
-static int driverno = 80;		//Default driver number
+static int driverno = 60;		//Default driver number
 
 //Operations that can be performed on the device
 static struct file_operations fops = {
