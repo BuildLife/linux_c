@@ -1,0 +1,29 @@
+char	1bytes	-128..127	%c
+
+unsigned char 1bytes 0..255	%c
+
+int 	4bytes	-2147483648..2147483647	%i,%d
+
+unsigned int 4bytes	0..4294967295	%u
+
+signed int	4bytes	-2147483648..2147483647	%i,%d
+
+short int	2bytes	-32768..32768	%hi
+
+unsigned short	2bytes	0..65535	%hu
+
+signed short 	2bytes	-32768..32767	
+
+long int	4bytes	-2147483648..2147483647	%li,%ld
+
+unsigned long	4bytes	0..4294967295	%lu
+
+signed long	4bytes	-2147483648..2147483647	
+
+long long	8bytes	-9223372036854775808..9223372036854775807	%lli
+
+unsigned long long	8bytes	0..18446744073709551615	%llu
+
+float	4bytes	3.4*10(-38) ..3.4*10(+38)(7sf)	%f,%e,%g
+
+double	8bytes	1.7*10(-308) ..1.7*10(+308)(15sf)	%f,%e,%g
