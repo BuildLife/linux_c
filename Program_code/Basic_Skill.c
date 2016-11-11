@@ -54,6 +54,24 @@ if(AnnexB != count)
 else
 	the other
 
+//auto set memory size
+char *mem;
+memset(mem,0,size);
+
+
+//dynamic set memory size,but after use needed to free the memory
+char *mem;
+mem = malloc(128);
+.
+.
+.
+.
+free(mem);
+
+
+
+
+
 
 
 
