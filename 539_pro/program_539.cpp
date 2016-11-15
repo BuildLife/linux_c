@@ -4,33 +4,6 @@
 #include "pFuntion.h"
 
 
-#define Max_Number 5
-#define MScript_Number 10
-#define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
-
-
-/*#define Mon(x)  (x<<1)+2
-#define Tues(x) (x<<2)+1
-#define Wed(x) 	(x<<1)+2
-#define	Thurs(x) (x<<2)+1
-#define Fri(x)	(x<<1)+2
-#define Sat(x)	(x<<2)+1
-*/
-
-time_t Current_Time;
-
-typedef struct NumberArray
-{
-	int Item_One[MScript_Number];
-	int Item_Two[MScript_Number];
-	int Item_Three[MScript_Number];
-	int Item_Four[MScript_Number];
-};
-
-int Days_Add(int*,int);
-void Collect_Array(int *, int* ,int* ,int* ,int*);
-void Include_All(int *, int, int*); //collect all array 
-void Change_List(int *); //List from small to large
 
 int main()
 {
@@ -85,7 +58,7 @@ int main()
 
 	for(k=0;k<Max_Number;k++)
 	{
-		printf("%d,",Complete[k]);
+		printf("%d, ",Complete[k]);
 	}
 	printf("\n");
 	switch(pt->tm_wday)
@@ -152,9 +125,9 @@ void Collect_Array(int *aCom, int* bCom, int* cCom, int* dCom,int *len)
 	
 	for(tNumbers = 0;tNumbers < 10;tNumbers++)
 	{
-		printf("%d,",*(aCom+tNumbers));
+		//printf("%d, ",*(aCom+tNumbers));
 	}
-	printf("\n");
+	//printf("\n");
 }
 
 void Change_List(int *List)
