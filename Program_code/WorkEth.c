@@ -1,4 +1,6 @@
 #include "lib_file.h"
+
+//include socket needed files
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -6,6 +8,9 @@
 #include <strings.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <net/if_arp.h>
+
 
 #define MAX_SIZE 50
 
@@ -33,6 +38,7 @@ void socket_server()
 	dest.sin_family = AF_INET;
 	dest.sin_port = htons(9998);
 
+
 	/*this line is different from client*/
 	//dest.sin_addr.s_addr = INADDR_ANY;
 	dest.sin_addr.s_addr = inet_addr("192.168.5.5");
@@ -46,6 +52,11 @@ void socket_server()
 		struct sockaddr_in client_addr;
 		int addrlen = sizeof(client_addr);
 		clientfd = accept(sockfd,(struct sockaddr*)&client_addr, &addrlen);
+	
+	struct arpreq arp_r;
+	bzero(&arp_r,sizeof(struct arpreq));
+	unsigned char *ptr = &arp_r.arp_ha.sa_data[0];
+	printf("MAC : %x:%x:%x:%x:%x:%x\n",*ptr,*(ptr+1),*(ptr+2),*(ptr+3),*(ptr+4),*(ptr+5));
 	/*loop -- accepting connection from client forever*/
 	while(1)
 	{
@@ -53,6 +64,7 @@ void socket_server()
 	//	struct sockaddr_in client_addr;
 	//	int addrlen = sizeof(client_addr);
 
+		printf("\n");
 		printf("Server Enter message:");
 		scanf("%s",buffer);
 		//pthread_create(,,NULL);
@@ -82,7 +94,7 @@ void socket_client()
 	int sockdest;
 	struct sockaddr_in serv_addr;
 	char S_buff[MAX_SIZE],R_buff[MAX_SIZE];
-	char message[1024], server_reply[2048];
+	char message[1024], server_message[2048];
 	if((sockdest = socket(AF_INET,SOCK_STREAM,0))<0)
 		printf("Failed creating socket\n");
 
@@ -97,23 +109,25 @@ void socket_client()
 			printf("Failed to connect to server\n");
 			return -1;
 		}
+			printf("\n");
 			printf("Socket Connect Success\n");
 			while(1)
 			{
+				printf("\n");
 				printf("Client Enter message:");
 				scanf("%s",message);
-
+				
 				if(send(sockdest,message,sizeof(message),0)<0)
 				{
-					puts("send failed");
+					printf("send failed\n");
 					return 1;
 				}
-				if(recv(sockdest,server_reply,2048,0)<0)
+				if(recv(sockdest,server_message,2048,0)<0)
 				{
-					puts("recv failed");
+					printf("recv failed\n");
 					break;
 				}
-				printf("Receive Server data : %s\n",server_reply);
+				printf("Receive Server data : %s\n",server_message);
 			}
 			close(sockdest);
 

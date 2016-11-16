@@ -20,9 +20,13 @@ read Code_File
 BuildMsg="Build =============> $Code_File.$FileName"
 
 if [ -f $Code_File.$FileName ] && [ $FileName = "c" ];then
-	echo $BuildMsg
-	gcc -std=c99 -o $Code_File"_S" $Code_File.$FileName
-	
+	if [ $Code_File.$FileName == "WorkEth.c" ];then
+		echo $BuildMsg
+		gcc -pthread -std=c99 -o $Code_File"_S" $Code_File.$FileName
+	else
+		echo $BuildMsg
+		gcc -std=c99 -o $Code_File"_S" $Code_File.$FileName
+	fi
 elif [ -f $Code_File.$FileName ] && [ $FileName = "cpp" ];then
 	echo $BuildMsg
 	g++ -o $Code_File"_S" $Code_File.$FileName
