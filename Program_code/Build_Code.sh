@@ -16,13 +16,18 @@ fi
 
 echo -n "Input the need to Build code file : "
 read Code_File
-	
+
+echo "*******************************************************"	
 BuildMsg="Build =============> $Code_File.$FileName"
+echo "*******************************************************"
 
 if [ -f $Code_File.$FileName ] && [ $FileName = "c" ];then
 	if [ $Code_File.$FileName == "WorkEth.c" ];then
 		echo $BuildMsg
 		gcc -pthread -std=c99 -o $Code_File"_S" $Code_File.$FileName
+	elif [ $Code_File.$FileName == "Re_data.c" ];then
+	    echo $BuildMsg
+		gcc -o $Code_File"_S" $Code_File.$FileName -lpcap
 	else
 		echo $BuildMsg
 		gcc -std=c99 -o $Code_File"_S" $Code_File.$FileName
@@ -31,7 +36,9 @@ elif [ -f $Code_File.$FileName ] && [ $FileName = "cpp" ];then
 	echo $BuildMsg
 	g++ -o $Code_File"_S" $Code_File.$FileName
 else
+	echo "*****************************************"
 	echo "No This file , Please check it again!"
+	echo "*****************************************"
 	ls
 fi
 

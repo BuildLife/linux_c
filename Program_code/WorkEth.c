@@ -1,17 +1,5 @@
 #include "lib_file.h"
 
-//include socket needed files
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <strings.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <net/if_arp.h>
-
-
 #define MAX_SIZE 50
 
 pthread_t pthreadServer;

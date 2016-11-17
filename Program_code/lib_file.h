@@ -11,3 +11,14 @@
 #include <string.h>
 #include <sys/types.h>
 #include <stdint.h>
+
+/*socket include*/
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <sys/ioctl.h>
+#include <net/if_arp.h>
+
+
+
