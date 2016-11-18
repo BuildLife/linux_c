@@ -27,7 +27,7 @@ if [ -f $Code_File.$FileName ] && [ $FileName = "c" ];then
 		gcc -pthread -std=c99 -o $Code_File"_S" $Code_File.$FileName
 	elif [ $Code_File.$FileName == "Re_data.c" ];then
 	    echo $BuildMsg
-		gcc -o $Code_File"_S" $Code_File.$FileName -lpcap
+		gcc -o $Code_File"_S" $Code_File.$FileName -lpcap -lbsd
 	else
 		echo $BuildMsg
 		gcc -std=c99 -o $Code_File"_S" $Code_File.$FileName
