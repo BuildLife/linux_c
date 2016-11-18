@@ -1,4 +1,3 @@
-//mu
 #include "lib_file.h"
 
 #define next_line printf("\n");
@@ -197,15 +196,6 @@ void dump_udp(u_int32_t length, const u_char *content)
 
 }
 
-/*test send loop*/
-/*char *send_packet()
-{
-	char *packet;
-
-
-
-	return 
-}*/
 
 int main(int argc, char *argv[])
 {
