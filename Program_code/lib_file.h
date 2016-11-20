@@ -35,3 +35,5 @@
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
+#include <netinet/igmp.h>
+#include <netinet/if_ether.h>
