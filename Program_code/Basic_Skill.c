@@ -69,7 +69,24 @@ mem = malloc(128);
 free(mem);
 
 
+//char pointer string content
+char *buf = "send"; --> it's really show "send\n\0"
 
+//char array string content
+char buf[] = "send"; --> it's mean "send\n"
+
+
+//strcmp function
+int ret = 0;
+char *buf;
+char *buf1
+
+strcmp("hello","world")   -> return -1  : different
+strcmp("abcde","ABCDE")   -> return 1   : the string was same,but case have different 
+strcmp("abcde","abcde")   -> return 0   : The same
+strcmp("12345","12345 ")  -> return -1  : The same , but the after have a space char.
+
+NOTE : char pointer & char array in strcmp has return 1, because different size and char content.
 
 
 
