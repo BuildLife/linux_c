@@ -25,7 +25,7 @@ if [ -f $Code_File.$FileName ] && [ $FileName = "c" ];then
 	if [ $Code_File.$FileName == "WorkEth.c" ];then
 		echo $BuildMsg
 		gcc -pthread -std=c99 -o $Code_File"_S" $Code_File.$FileName
-	elif [ $Code_File.$FileName == "Re_data.c" ];then
+	elif [ $Code_File.$FileName == "redata.c" ];then
 	    echo $BuildMsg
 		gcc -pthread -o $Code_File"_S" $Code_File.$FileName -lpcap -lbsd
 	else
