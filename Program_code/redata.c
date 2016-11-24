@@ -3,6 +3,7 @@
 
 #define next_line printf("\n");
 #define MAC_ADDRSTRLEN 2*6+5+1
+//#define ETH_AND_VLAN 
 
 /* 
 struct pcap_pkthdr{
@@ -81,7 +82,7 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header,cons
 			
 
 			//complite data packet
-			dump_ip(header->caplen, bytes);
+			dump_ip((struct ip*)(bytes + ETHER_HDR_LEN));
 		break;
 
 		case ETHERTYPE_IPV6:
@@ -95,6 +96,11 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header,cons
 			printf("arp.............\n");
 			dump_arp(header->caplen, bytes);
 		break;
+
+		case ETH_P_8021Q:
+			printf("vlan tag\n");
+			dump_vlan_tag(header->caplen, bytes);
+			break;
 
 		default:
 			printf("other\n");
@@ -113,45 +119,81 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header,cons
 	return;
 }
 
-//struct  ether_arp {
-//        struct  arphdr ea_hdr;          /* fixed-size header */
-//        u_int8_t arp_sha[ETH_ALEN];     /* sender hardware address */
-//        u_int8_t arp_spa[4];            /* sender protocol address */
- //       u_int8_t arp_tha[ETH_ALEN];     /* target hardware address */
- //       u_int8_t arp_tpa[4];            /* target protocol address */
-//};
+void dump_vlan_tag(u_int32_t length, const u_char *content)
+{
+	eth_header *ethhdr = (eth_header*)content;
 
-/*#define arp_hrd ea_hdr.ar_hrd
-#define arp_pro ea_hdr.ar_pro
-#define arp_hln ea_hdr.ar_hln
-#define arp_pln ea_hdr.ar_pln
-#define arp_op  ea_hdr.ar_op*/
+	unsigned short tpid = htons(ethhdr->tpid);
+	char src[64];
+	char dst[64];
+	printf("***************************************\n");
+	printf("TPID --> %u\n",tpid);
+	switch(ntohs(ethhdr -> vid))
+	{	
+		case ETHERTYPE_IP:
+			{
+				printf("UDP Type.......................................\n");
+				ip_header *ipv4 = (ip_header*)(content + sizeof(eth_header));
+				inet_ntop(AF_INET, &ipv4->ip_src, src, sizeof(src));
+				inet_ntop(AF_INET, &ipv4->ip_dst, dst, sizeof(dst));
+				printf("IP Source --> %s\n",src);
+				printf("IP Destination --> %s\n",dst);
+			}
+			break;
+
+		case ETHERTYPE_ARP:
+			{
+				printf("ARP Type..........................................\n");
+				arp_packet *arp_p = (arp_packet*)(content + sizeof(eth_header));
+				printf("ARP IP Source --> %u.%u.%u.%u\n",arp_p->arp_sip[0],arp_p->arp_sip[1],arp_p->arp_sip[2],arp_p->arp_sip[3]);
+				printf("ARP IP Destination -->%u.%u.%u.%u\n",arp_p->arp_tip[0],arp_p->arp_tip[1],arp_p->arp_tip[2],arp_p->arp_tip[3]);
+
+			}
+			break;
+		default:
+			printf("others\n");
+			break;
+
+	}
+
+	printf("****************************************\n");
+}
 
 void dump_arp(u_int32_t length, const u_char *content)
 {
-	printf("Protocol : arp\n");
-	struct ether_arp *arp = (struct ether_arp*)(content + ETHER_HDR_LEN);
-	//u_int8_t *arp_SEhardware = arp->arp_sha; --> mac address
-	u_int8_t *arp_SEprotocol = arp->arp_spa;
-	//u_int8_t *arp_TAhardware = arp->arp_tha; --> mac address
-	u_int8_t *arp_TAprotocol = arp->arp_tpa;
+	static char *arp_ethtype[5] = {"NULL","Ethernet","Token Ring","Frame Relay","ATM"};
+	static char *arp_code[5] = {"NULL","ARP_Request","ARP_Reply","RARP_Request","RARP_Reply"};
 
-	int arp_hardsize = arp->ea_hdr.ar_hln;
-	int arp_protosize = arp->ea_hdr.ar_pln;
-	unsigned short int arp_opcode = arp->ea_hdr.ar_op;
+	arp_packet *arp = (arp_packet *)(content + ETHER_HDR_LEN);
+
+	unsigned short int arp_type = htons(arp->arp_hrdtype);
+	unsigned short int arp_protocol = htons(arp -> arp_protocol);
+	int arp_hardsize = arp -> arp_hardln;
+	int arp_protosize = arp -> arp_protoln;
+
+	unsigned short int arp_opcode = htons(arp -> arp_opcode);
+	
+	unsigned char *arp_SEMac = arp -> arp_shard;
+	unsigned char *arp_SEprotocol = arp -> arp_sip;
+	unsigned char *arp_TAMac = arp -> arp_thard;
+	unsigned char *arp_TAprotocol = arp -> arp_tip;
+
 
 	printf("***********************************************\n");
-	printf("ARP opcode -> %u\n", arp_opcode);
-    printf("ARP Sender protocol address -> %u.%u.%u.%u\n", arp_SEprotocol[0],arp_SEprotocol[1],arp_SEprotocol[2],arp_SEprotocol[3]);
-	printf("ARP Target protocol address -> %u.%u.%u.%u\n", arp_TAprotocol[0],arp_TAprotocol[1],arp_TAprotocol[2],arp_TAprotocol[3]);
+	printf("ARP Hardware Type -> %s\n", arp_ethtype[arp_type]);
+	printf("ARP Protocol -> 0x%04x  %-9s\n", arp_protocol, (arp_protocol == ETHERTYPE_IP) ? "IP" : "Not IP");
 	printf("ARP hardware size -> %u\n", arp_hardsize);
 	printf("ARP protocol size -> %u\n", arp_protosize);
+	printf("ARP opcode -> %s\n", arp_code[arp_opcode]);
+	printf("ARP Sender MAC -> %02x:%02x:%02x:%02x:%02x:%02x\n", arp_SEMac[0], arp_SEMac[1], arp_SEMac[2], arp_SEMac[3], arp_SEMac[4], arp_SEMac[5]);
+    printf("ARP Sender protocol address -> %u.%u.%u.%u\n", arp_SEprotocol[0], arp_SEprotocol[1], arp_SEprotocol[2], arp_SEprotocol[3]);
+	printf("ARP Target MAC -> %02x:%02x:%02x:%02x:%02x:%02x\n", arp_TAMac[0], arp_TAMac[1], arp_TAMac[2],arp_TAMac[3], arp_TAMac[4], arp_TAMac[5]);
+	printf("ARP Target protocol address -> %u.%u.%u.%u\n", arp_TAprotocol[0], arp_TAprotocol[1], arp_TAprotocol[2], arp_TAprotocol[3]);
     printf("***********************************************\n");	
 }
 
-void dump_ip(u_int32_t length, const u_char *content)
+void dump_ip(struct ip* ip)
 {
-	struct ip *ip = (struct ip*)(content + ETHER_HDR_LEN);
 	u_char protocol = ip->ip_p;
 
 	u_int8_t ip_tos = ip -> ip_tos; // type of service
@@ -172,26 +214,27 @@ void dump_ip(u_int32_t length, const u_char *content)
 	printf("IP Chceck sum			-> 0x%04x(%u)\n", ip_checksum,ip_checksum);
 	printf("***********************************************\n");
 
-	printf("Protocol : ip\n");
-
+	char *p = (char *)ip + (ip->ip_hl << 2);
 
 	switch(protocol){
-		case IPPROTO_UDP:
+		case IPPROTO_TCP:
 			printf("*********** UDP *************\n");
-			dump_udp(length,content);
+			dump_tcp((struct tcphdr*)p);
 		break;
 
-		case IPPROTO_TCP:
+		case IPPROTO_UDP:
 			printf("*********** TCP *************\n");
-			dump_tcp(length,content);
+			dump_udp((struct udphdr*)p);
 		break;
 
 		case IPPROTO_ICMP:
 			printf("*********** ICMP ************\n");
+			dump_icmp((struct icmp*)p);
 		break;
 
 		case IPPROTO_IGMP:
 			printf("*********** IGMP *************\n");
+			dump_IGMP((struct igmp*)p);
 		break;
 
 		default:
@@ -200,10 +243,7 @@ void dump_ip(u_int32_t length, const u_char *content)
 	}
 }
 
-void dump_tcp(u_int32_t length, const u_char *content){
-
-	struct ip *ip = (struct ip *)(content + ETHER_HDR_LEN);
-	struct tcphdr *tcp = (struct tcphdr*)(content + ETHER_HDR_LEN + (ip->ip_hl << 2));
+void dump_tcp(struct tcphdr* tcp){
 
 	u_int16_t source_port = ntohs(tcp->th_sport);
 	u_int16_t destination_port = ntohs(tcp->th_dport);
@@ -213,10 +253,8 @@ void dump_tcp(u_int32_t length, const u_char *content){
 
 }
 
-void dump_udp(u_int32_t length, const u_char *content)
+void dump_udp(struct udphdr* udp)
 {
-	struct ip *ip = (struct ip*)(content + ETHER_HDR_LEN);
-	struct udphdr *udp = (struct udphdr*)(content + ETHER_HDR_LEN + (ip->ip_hl << 2));
 	u_int16_t udp_source = ntohs(udp->uh_sport);
 	u_int16_t udp_dest = ntohs(udp->uh_dport);
 	u_int16_t udp_check = ntohs(udp->uh_sum);
@@ -228,11 +266,78 @@ void dump_udp(u_int32_t length, const u_char *content)
 	printf("***********************************************\n");
 }
 
-void dump_IGMP(u_int32_t length,const u_char *content)
+
+void dump_icmp(struct icmp *icmp)
 {
-	struct ip *ip = (struct ip*)(content + ETHER_HDR_LEN);
-	struct igmp *igmp = (struct igmp*)(content + ETHER_HDR_LEN + (ip -> ip_hl << 2));
+
+	unsigned char type = icmp->icmp_type;
+	unsigned char code = icmp->icmp_code;
+	unsigned short checksum = htons(icmp->icmp_cksum);
 	
+	//identifier & sequence 
+	unsigned short ident = icmp->icmp_id;
+	unsigned short seq = icmp->icmp_seq;
+
+	static char *ICMPtype[] = {
+			"Echo Reply",
+			"Undefined",
+			"Undefined",
+			"Distination",
+			"Source Quench",
+			"Redirect",
+			"Undefined",
+			"Undefined",
+			"Echo Request",
+			"Undefined",
+			"Undefined",
+			"Time Exeeded for a Datagram",
+			"Parameter Problem on a Datagram",
+			"Timestamp Request",
+			"Timestamp Replay",
+			"Information Request",
+			"Information Reply",
+			"Address Mask Request",
+			"Address Mask Reply",
+	};
+
+	static char *ICMPcode[] = {
+				"Network Unreachable",
+				"Host Unreachable",
+				"Protocol Unreachable",
+				"Port Unreachable",
+				"Fragmentation Needed and DF set",
+				"Source Route Failed",
+				"Destination network unknown",
+				"Destination host unknown",
+				"Source host isolated",
+				"Communication with destination network administraively prohibited",
+				"Communication with destination host administraively prohibited",
+				"Network unreachable for type of service",
+				"host unreachable for type of service",
+				"Communication Administratively Prohibited",
+				"Host precedence violation",
+				"Precedence cutoff in effect",
+	};
+
+	printf("***********************************************\n");
+	printf("ICMP Type -----> %u, %s\n", type, ICMPtype[type]);
+	if(type == 3)
+		printf("ICMP Code -----> %u, %s\n", code, ICMPcode[code]);
+	else
+	{
+		printf("ICMP Code -----> %u\n", code);
+		printf("Identifier ----> %u\n", ident);
+		printf("Sequence ------> %u\n", seq);
+	}
+	printf("ICMP checksum code -> %5x\n", checksum);
+	printf("***********************************************\n");
+
+
+
+}
+
+void dump_IGMP(struct igmp *igmp)
+{
 	u_int8_t igmp_type = igmp->igmp_type;
 	u_int8_t igmp_code = igmp->igmp_code;
 	u_int16_t igmp_checksum = igmp->igmp_cksum;
@@ -246,23 +351,96 @@ void dump_IGMP(u_int32_t length,const u_char *content)
 
 }
 
-char *buf;
-char *s_get;
-int tx_len = 0;
-
-void send_packet()
+unsigned char *get_mac(char *interface)
 {
-	pcap_t *p_send;
-		
-	char sendbuf[128];	
-	eth_header *ethhdr = (eth_header*)sendbuf;
-	//struct ether_header *ethhdr = (struct ether_header *)sendbuf;
-	//struct ether_arp *arp = (struct ether_arp*)(sendbuf + sizeof(eth_header));
-	//struct iphdr *ipv4h = (struct iphdr*)(sendbuf + sizeof(struct ether_header));
-	ip_header *ipv4 = (ip_header*)(sendbuf + sizeof(eth_header));
-	tx_len = sizeof(eth_header) + sizeof(ip_header);
+	int fd;
+	struct ifreq ifr;
+	unsigned char *mac;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	ifr.ifr_addr.sa_family = AF_INET;
+	strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
+
+	ioctl(fd, SIOCGIFHWADDR, &ifr);
+
+	close(fd);
+
+	mac = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+
+	return mac;
+}
+
+unsigned char *SendUDPBuf()
+{
+	int len = 0;
+
+	unsigned char *g_mac;
+	g_mac = get_mac("eth14");
+
+	unsigned char newbuf[128];
 	
-	memset(sendbuf, 0, 1024);
+	eth_header *ethhdr = (eth_header*)newbuf;
+	ip_header *ipv4 = (ip_header*)(newbuf + sizeof(eth_header));
+	udp_header *udp_p = (udp_header*)(newbuf + sizeof(eth_header) + sizeof(ip_header));
+	len = sizeof(eth_header) + sizeof(ip_header) + sizeof(udp_header);
+	memset(newbuf, 0, sizeof(eth_header) + sizeof(ip_header) + sizeof(udp_header) + 16);
+	
+	//Destination mac address
+	ethhdr->dmac[0] = 0xc4;
+	ethhdr->dmac[1] = 0x12;
+	ethhdr->dmac[2] = 0xf5;
+	ethhdr->dmac[3] = 0x30;
+	ethhdr->dmac[4] = 0x92;
+	ethhdr->dmac[5] = 0xf9;
+
+	//Source mac address
+	ethhdr->smac[0] = g_mac[0];
+	ethhdr->smac[1] = g_mac[1];
+	ethhdr->smac[2] = g_mac[2];
+	ethhdr->smac[3] = g_mac[3];
+	ethhdr->smac[4] = g_mac[4];
+	ethhdr->smac[5] = g_mac[5];
+
+	ethhdr->type = htons(ETH_P_8021Q);
+	ethhdr->tpid = htons(2049);
+	
+	ethhdr->vid = htons(0x0800);
+
+	ipv4 -> ip_v = 5;
+	ipv4 -> ip_hl = 4;
+	ipv4 -> ip_tos = 0;
+	ipv4 -> ip_len = htons(28);
+	ipv4 -> ip_id = htons(0x1234);
+	ipv4 -> ip_off = 0;
+	ipv4 -> ip_ttl = 0xff;
+	ipv4 -> ip_p = 17;
+	ipv4 -> ip_sum = htons(0x1e3e);
+	ipv4 -> ip_src = inet_addr("192.168.5.9");
+	ipv4 -> ip_dst = inet_addr("192.168.5.5");
+
+	udp_p -> udp_source = htons(1024);
+	udp_p -> udp_dest = htons(1025);
+	udp_p -> udp_len = htons(8);
+	udp_p -> udp_check = htons(0x736b);
+	
+	return newbuf;
+}
+
+unsigned char *SendARPBuf()
+{
+	int len = 0;
+
+	/*get mac*/
+	unsigned char *g_mac;
+	g_mac = get_mac("eth14");
+		
+	unsigned char sendbuf[128];
+
+	eth_header *ethhdr = (eth_header*)sendbuf;
+	arp_packet *arp_p = (arp_packet*)(sendbuf + sizeof(eth_header));
+	len = sizeof(eth_header) + sizeof(arp_packet);
+	memset(sendbuf, 0, sizeof(eth_header) + sizeof(ip_header) + 16);
 
 	//Destination mac address
 	ethhdr->dmac[0] = 0xc4;
@@ -273,86 +451,81 @@ void send_packet()
 	ethhdr->dmac[5] = 0xf9;
 
 	//Source mac address
-	ethhdr->smac[0] = 0x08;
-	ethhdr->smac[1] = 0x00;
-	ethhdr->smac[2] = 0x27;
-	ethhdr->smac[3] = 0x63;
-	ethhdr->smac[4] = 0xa8;
-	ethhdr->smac[5] = 0xde;	
-	
-	//ethhdr->type = htons(0x0800);
+	ethhdr->smac[0] = g_mac[0];
+	ethhdr->smac[1] = g_mac[1];
+	ethhdr->smac[2] = g_mac[2];
+	ethhdr->smac[3] = g_mac[3];
+	ethhdr->smac[4] = g_mac[4];
+	ethhdr->smac[5] = g_mac[5];
+
 	ethhdr->type = htons(ETH_P_8021Q);
 	ethhdr->tpid = htons(2049);
-	//ethhdr->type = htons(ETH_P_ARP);
-	ethhdr->vid = htons(0x0800);
+	ethhdr->vid = htons(0x0806);
+
+
+	unsigned char *arp_mac;
+	arp_mac = get_mac("eth14");
+
+	arp_p -> arp_hrdtype = htons(1);
+	arp_p -> arp_protocol = htons(0x0800);
+	arp_p -> arp_hardln = 6;
+	arp_p -> arp_protoln = 4;
+	arp_p -> arp_opcode = htons(2);
+
+	arp_p -> arp_shard[0] = arp_mac[0];
+	arp_p -> arp_shard[1] = arp_mac[1];
+	arp_p -> arp_shard[2] = arp_mac[2];
+	arp_p -> arp_shard[3] = arp_mac[3];
+	arp_p -> arp_shard[4] = arp_mac[4];
+	arp_p -> arp_shard[5] = arp_mac[5];
+
+	arp_p -> arp_sip[0] = 192;
+	arp_p -> arp_sip[1] = 168;
+	arp_p -> arp_sip[2] = 5;
+	arp_p -> arp_sip[3] = 5;
+
 	
-	ipv4 -> ip_v = 5;
-	ipv4 -> ip_hl = 4;
-	ipv4 -> ip_tos = 1;
-	ipv4 -> ip_len = htons(128);
-	ipv4 -> ip_id = htons(0x7a0b);
-	ipv4 -> ip_off = 1;
-	ipv4 -> ip_ttl = 1;
-	ipv4 -> ip_p = htons(0x0800);
-	//ipv4 -> ip_sum = ip_header_cksum(ipv4,sizeof(ipv4));
-	ipv4 -> ip_sum = htons(0xb30b);
-	ipv4 -> ip_src = inet_addr("192.168.5.9");
-	ipv4 -> ip_dst = inet_addr("192.168.5.5");
+	arp_p -> arp_thard[0] = 0xc4;
+	arp_p -> arp_thard[1] = 0x12;
+	arp_p -> arp_thard[2] = 0xf5;
+	arp_p -> arp_thard[3] = 0x30;
+	arp_p -> arp_thard[4] = 0x92;
+	arp_p -> arp_thard[5] = 0xf9;
+
 	
-	sendbuf[tx_len++] = 0xfd;
-	sendbuf[tx_len++] = 0xde;
-	sendbuf[tx_len++] = 0x33;
-	/*arp->arp_sha[0] = 0x08;
-	arp->arp_sha[1] = 0x00;
-	arp->arp_sha[2] = 0x27;
-	arp->arp_sha[3] = 0x63;
-	arp->arp_sha[4] = 0xa8;
-	arp->arp_sha[5] = 0xde;
-
-	arp->arp_spa[0] = 192;
-	arp->arp_spa[1] = 168;
-	arp->arp_spa[2] = 5;
-	arp->arp_spa[3] = 9;
-
-	arp->arp_tha[0] = 0xc4;
-	arp->arp_tha[1] = 0x12;
-	arp->arp_tha[2] = 0xf5;
-	arp->arp_tha[3] = 0x30;
-	arp->arp_tha[4] = 0x92;
-	arp->arp_tha[5] = 0xf9;
-
-	arp->arp_tpa[0] = 192;
-	arp->arp_tpa[1] = 168;
-	arp->arp_tpa[2] = 5;
-	arp->arp_tpa[3] = 5;
-
-	arp->ea_hdr.ar_hrd = 1;
-	arp->ea_hdr.ar_pro = htons(ETH_P_IP);
-	arp->ea_hdr.ar_hln = 6;
-	arp->ea_hdr.ar_pln = 4;
-	arp->ea_hdr.ar_op = htons(ARPOP_REQUEST);*/
-	//arp->ea_hdr.ar_op = 0x0001;
-	/*ipv4h->version = 4;
-
-	ipv4h->tot_len = htons(128);
-	ipv4h->id = htons(0x7d0a);
+	arp_p -> arp_tip[0] = 192;
+	arp_p -> arp_tip[1] = 168;
+	arp_p -> arp_tip[2] = 5;
+	arp_p -> arp_tip[3] = 9;
 	
-	ipv4h->frag_off = 0;
-	ipv4h->ttl = 1;
-	ipv4h->protocol = 2;
-	ipv4h->check = htons(0xec24);
+	sendbuf[len++] = 0xfd;
+	sendbuf[len++] = 0xde;
+	sendbuf[len++] = 0x33;
 
-	ipv4h->saddr = inet_addr("192.168.5.9");
-	ipv4h->daddr = inet_addr("192.168.5.5");*/
+	return sendbuf;
+}
 
-	int send_size = sizeof(sendbuf) - 1;
+
+char *buf;
+char *s_get;
+int tx_len = 0;
+
+void send_packet()
+{
+	/*get mac*/
+	//unsigned char *g_mac;
+	//g_mac = get_mac("eth14");
+
+	pcap_t *p_send;
+
 	buf = malloc(100*sizeof(char));
 	s_get = malloc(100*sizeof(char));
 	s_get = "send\n\0";
 	char errbuf[PCAP_ERRBUF_SIZE];	
 
 	p_send = pcap_open_live("eth14", 65536, 1, 10, errbuf);
-	//open eth port use in vmware ubuntu 16.04
+
+	/*open eth port use in vmware ubuntu 16.04*/
 	//pcap = pcap_open_live("ens33", 65536, 1, 10, errbuf);
 
 	if( p_send == NULL ){
@@ -362,9 +535,15 @@ void send_packet()
 
 	while(fgets(buf, sizeof(buf), stdin) != NULL)
 	{
-		if(!(strcmp(buf, s_get)))
+		if(!(strcmp(buf, "udp\n\0")))
 		{
-			if(pcap_sendpacket(p_send, sendbuf, send_size) < 0 ){
+			if(pcap_sendpacket(p_send, SendUDPBuf(), 256) < 0 ){
+			fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
+			}
+		}
+		else if(!(strcmp(buf, "arp\n\0")))
+		{
+			if(pcap_sendpacket(p_send, SendARPBuf(), 256) < 0 ){
 			fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
 			}
 		}
@@ -415,9 +594,6 @@ int main(int argc, char *argv[])
 	struct bpf_program bpf_p;
 	bpf_u_int32 net,mask;
 
-	//u_char send_packet[] = "\x01\x02\x03\x04\x05\x06\x07\x08\x09";
-	//int send_size = sizeof(send_packet) - 1;
-
 	//open eth port
 /*	pcap = pcap_open_live("eth14", 65536, 1, 10, errbuf);
 	//open eth port use in vmware ubuntu 16.04
@@ -459,14 +635,6 @@ int main(int argc, char *argv[])
 
 	pthread_join(pthreadPcapLoop,NULL);
 	pthread_join(pthreadSendPacket,NULL);
-/*	if(stdin == "send")
-	{
-		if(pcap_sendpacket(pcap,send_packet, send_size) < 0 ){
-		fprintf(stderr, "pcap_sendpacket:%s\n",pcap_geterr(pcap));
-		}
-	}
-	
-*/
 /*	if( pcap_loop(pcap,-1, pcap_handler_func,NULL) < 0 ){
 		fprintf(stderr, "%s\n",pcap_geterr(pcap));
 		pcap_close(pcap);

@@ -10,9 +10,10 @@ signed int	4bytes	-2147483648..2147483647	%i,%d
 
 short int	2bytes	-32768..32768	%hi
 
-unsigned short	2bytes	0..65535	%hu
+unsigned short	      2bytes	0..65535	%hu
+unsigned short int -> same up 
 
-signed short 	2bytes	-32768..32767	
+signed short 	2bytes	-32768..32767
 
 long int	4bytes	-2147483648..2147483647	%li,%ld
 
@@ -27,3 +28,5 @@ unsigned long long	8bytes	0..18446744073709551615	%llu
 float	4bytes	3.4*10(-38) ..3.4*10(+38)(7sf)	%f,%e,%g
 
 double	8bytes	1.7*10(-308) ..1.7*10(+308)(15sf)	%f,%e,%g
+
+

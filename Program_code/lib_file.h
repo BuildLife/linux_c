@@ -1,7 +1,8 @@
 /*Basic lib*/
+#define d_vlan 1
 #define _BSD_SOURCE
 //#define __BEGIN_DECLS
-#define __FAVOR_BSD 
+//#define __FAVOR_BSD 
 #define _USE_BSD 
 //#define _LINUX_UDP_H
 #include <stdio.h>
@@ -20,11 +21,11 @@
 
 /*socket include*/
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
-#include <net/if_arp.h>
 #include <netdb.h>
 #include <errno.h>
 
@@ -32,6 +33,7 @@
 #include <pcap.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
+#include <net/if.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/udp.h>
