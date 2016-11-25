@@ -83,6 +83,19 @@ unsigned char pkt1[] = {
 0x3d, 0x0f, 0xff, 0x7b, 0x11, 0x11, 0x12, 0x00, 
 0x03, 0x00, 0x01, 0x00, 0x1c, 0x7b, 0x11, 0x11, 
 0x12, 0x39, 0x02, 0x05, 0xdc, 0xff };
+//compare 
+bool compare(unsigned char *buf1,unsigned char *buf2)
+{
+	int i = 0;
+	for(i = 0;i<sizeof(eth2_buf);i++)
+	{
+		if(buf1[i] != buf2[i])
+		return false;
+	}
+	return true;
+	
+}
+
 //transformation mac address to string 
 char *mac_ntoa(unsigned char *d)
 {
@@ -105,13 +118,13 @@ void pcap_handler_func_t(unsigned char *user,const struct pcap_pkthdr *header,co
 	char addrdes[64];
 
 
-	/*int x = 0;
+	int x = 0;
 	int eth_tw = 0;
 	for(x = 14;x<header->caplen;x++)
 	{
 		eth2_buf[eth_tw++] = bytes[x]; 
 	}
-	int t = 0;
+	/*int t = 0;
 	printf("eth2 buffer .........................................\n");
 	for(t = 0;t<header->caplen;t++)
 	{
@@ -121,6 +134,7 @@ void pcap_handler_func_t(unsigned char *user,const struct pcap_pkthdr *header,co
 		}
 	}*/
 
+	printf("compare anser : %s\n",compare(eth2_buf,eth14_buf));
 	//get ethernet type & value
 	struct ether_header *ethhdr = (struct ether_header *)bytes;
 	struct iphdr *ipv4h;
@@ -836,9 +850,9 @@ void ploop()
 	char errbuf[PCAP_ERRBUF_SIZE];	
 	
 	//open eth port
-	pcap = pcap_open_live("eth14", 65536, 1, 10, errbuf);
+	//pcap = pcap_open_live("eth14", 65536, 1, 10, errbuf);
 	//open eth port use in vmware ubuntu 16.04
-	//pcap = pcap_open_live("ens33", 65536, 1, 10, errbuf);
+	pcap = pcap_open_live("ens33", 65536, 1, 10, errbuf);
 
 	if( pcap == NULL ){
 	fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
@@ -900,11 +914,6 @@ pthread_t pthreadPcapLoop_t;
 
 int main(int argc, char *argv[])
 {
-//	pcap_t *pcap;
-//	char errbuf[PCAP_ERRBUF_SIZE];
-
-	//struct bpf_program bpf_p;
-	//bpf_u_int32 net,mask;
 
 	//open eth port
 /*	pcap = pcap_open_live("eth14", 65536, 1, 10, errbuf);
@@ -957,22 +966,22 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	
-	/*ret_l = pthread_create(&pthreadPcapLoop, NULL, (void*)ploop, NULL);
+	ret_l = pthread_create(&pthreadPcapLoop, NULL, (void*)ploop, NULL);
 	if(ret_l != 0)
-	{
-		printf("create pcap loop thread error\n");
-		exit(1);
-	}*/
-
-	ret_lt = pthread_create(&pthreadPcapLoop_t, NULL, (void*)ploop_t, NULL);
-	if(ret_lt != 0)
 	{
 		printf("create pcap loop thread error\n");
 		exit(1);
 	}
 
-	//pthread_join(pthreadPcapLoop,NULL);
-	pthread_join(pthreadPcapLoop_t,NULL);
+	/*ret_lt = pthread_create(&pthreadPcapLoop_t, NULL, (void*)ploop_t, NULL);
+	if(ret_lt != 0)
+	{
+		printf("create pcap loop thread error\n");
+		exit(1);
+	}
+*/
+	pthread_join(pthreadPcapLoop,NULL);
+	//pthread_join(pthreadPcapLoop_t,NULL);
 	pthread_join(pthreadSendPacket,NULL);
 /*	if( pcap_loop(pcap,-1, pcap_handler_func,NULL) < 0 ){
 		fprintf(stderr, "%s\n",pcap_geterr(pcap));
