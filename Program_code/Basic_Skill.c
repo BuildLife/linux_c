@@ -54,7 +54,7 @@ if(AnnexB != count)
 else
 	the other
 
-//auto set memory size
+//auto set memory size or can use it for men data to zero
 char *mem;
 memset(mem,0,size);
 
@@ -88,6 +88,12 @@ strcmp("12345","12345 ")  -> return -1  : The same , but the after have a space 
 
 NOTE : char pointer & char array in strcmp has return 1, because different size and char content.
 
+
+/*compare array to 1 or 0*/
+int x = 0;
+printf("%d\n", x ? 0 : 1);
+
+ans -> 0;
 
 
 

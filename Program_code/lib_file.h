@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*use in true & false type : boolean type*/
+#include <stdbool.h>
+
 /*time lib*/
 #include <time.h>
 #include <unistd.h>
