@@ -1,12 +1,79 @@
-#include "lib_file.h"
-#include "IPHeader.h"
+/*Basic lib*/
+#define _BSD_SOURCE
+#define _USE_BSD 
+#include <stdio.h>
+#include <stdlib.h>
+
+/*use in true & false type : boolean type*/
+#include <stdbool.h>
+
+/*time lib*/
+#include <time.h>
+#include <unistd.h>
+
+/*Variable type*/
+//#include <bsd/string.h>
+#include <string.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <memory.h>
+
+/*socket include*/
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <sys/ioctl.h>
+#include <netdb.h>
+#include <errno.h>
+
+
+#include <pcap.h>
+#include <net/ethernet.h>
+#include <net/if_arp.h>
+#include <net/if.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/igmp.h>
+#include <netinet/if_ether.h>
+
+typedef struct S_ETH_HEADER
+{
+	unsigned char dmac[6];  // 6 Byte
+	unsigned char smac[6];  // 6 Byte
+	unsigned short type;
+	unsigned short tpid; 	// 2 Byte
+	unsigned short vid; 	// 2 Byte
+}__attribute__((__packed__)) eth_header;
+
+typedef struct S_IP_HEADER
+{
+	unsigned char ip_v:4, ip_hl:4; /*this means that each member is 4 bits*/
+	unsigned char ip_tos;
+	unsigned short ip_len; // value : 28 -> this means ip header + udp header length
+	unsigned short ip_id; //identification
+	unsigned short ip_off;
+	unsigned char ip_ttl;
+	unsigned char ip_p; //protocol -> tcp : 6 , udp : 17
+	unsigned short ip_sum;
+	unsigned int ip_src;	//4 Byte
+	unsigned int ip_dst;	//4 Byte
+}__attribute__((__packed__)) ip_header;
+
 
 #define MAC_ADDRSTRLEN 2*6+5+1
 
 char *SendBuf;
 char *ReceiveBuf;
 
-char *ChangeMode = "default";
+/*Ethernet interface*/
+char *Ether_in = "eth14";
+char *Ether_out = "eth2";
+
 
 /*DHCP Discover buffer : DVGM*/
 char pkt1[] = {
@@ -82,79 +149,6 @@ char pkt1[] = {
 
 
 
-/*DHCP Discover buffer : SVGM*/
-char pkt2[] = {
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
-	0x7b, 0x11, 0x11, 0x12, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00, 
-	0x02, 0x18, 0xde, 0xad, 0x00, 0x00, 0x80, 0x11, 
-	0x5a, 0x28, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 
-	0xff, 0xff, 0x00, 0x44, 0x00, 0x43, 0x02, 0x04, 
-	0xcd, 0x21, 0x01, 0x01, 0x06, 0x00, 0x29, 0xd9, 
-	0xaa, 0x6c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c, 
-	0x7b, 0x11, 0x11, 0x12, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x82, 
-	0x53, 0x63, 0x35, 0x01, 0x01, 0x37, 0x09, 0x01, 
-	0x02, 0x03, 0x04, 0x07, 0x06, 0x64, 0x7a, 0x7d, 
-	0x3c, 0x0a, 0x64, 0x6f, 0x63, 0x73, 0x69, 0x73, 
-	0x33, 0x2e, 0x30, 0x3a, 0x7d, 0x88, 0x00, 0x00, 
-	0x11, 0x8b, 0x83, 0x01, 0x01, 0x02, 0x05, 0x7e, 
-	0x01, 0x01, 0x01, 0x02, 0x01, 0x03, 0x03, 0x01, 
-	0x01, 0x04, 0x01, 0x01, 0x05, 0x01, 0x01, 0x06, 
-	0x01, 0x01, 0x07, 0x01, 0x0f, 0x08, 0x01, 0x10, 
-	0x09, 0x01, 0x03, 0x0a, 0x01, 0x01, 0x0b, 0x01, 
-	0x18, 0x0c, 0x01, 0x01, 0x0d, 0x02, 0x00, 0x40, 
-	0x0e, 0x02, 0x00, 0x10, 0x0f, 0x01, 0x01, 0x10, 
-	0x04, 0x00, 0x00, 0x00, 0x04, 0x11, 0x01, 0x00, 
-	0x14, 0x01, 0x00, 0x15, 0x01, 0x3f, 0x16, 0x01, 
-	0x01, 0x17, 0x01, 0x01, 0x18, 0x01, 0x04, 0x19, 
-	0x01, 0x04, 0x1a, 0x01, 0x04, 0x1b, 0x01, 0x20, 
-	0x1c, 0x01, 0x02, 0x1d, 0x01, 0x08, 0x1e, 0x01, 
-	0x20, 0x1f, 0x01, 0x10, 0x20, 0x01, 0x10, 0x21, 
-	0x01, 0x02, 0x22, 0x01, 0x01, 0x23, 0x01, 0x00, 
-	0x24, 0x01, 0x00, 0x25, 0x01, 0x01, 0x26, 0x02, 
-	0x00, 0xff, 0x27, 0x01, 0x00, 0x28, 0x01, 0x00, 
-	0x2c, 0x04, 0x00, 0x00, 0x00, 0x01, 0x2b, 0x50, 
-	0x02, 0x03, 0x45, 0x43, 0x4d, 0x03, 0x08, 0x45, 
-	0x43, 0x4d, 0x3a, 0x45, 0x4d, 0x54, 0x41, 0x04, 
-	0x00, 0x05, 0x04, 0x56, 0x31, 0x2e, 0x30, 0x06, 
-	0x09, 0x35, 0x2e, 0x35, 0x2e, 0x31, 0x30, 0x6d, 
-	0x70, 0x35, 0x07, 0x0a, 0x32, 0x2e, 0x34, 0x2e, 
-	0x30, 0x62, 0x65, 0x74, 0x61, 0x33, 0x08, 0x06, 
-	0x30, 0x30, 0x31, 0x30, 0x31, 0x38, 0x09, 0x0b, 
-	0x42, 0x43, 0x4d, 0x39, 0x33, 0x33, 0x38, 0x33, 
-	0x56, 0x43, 0x4d, 0x0a, 0x08, 0x42, 0x72, 0x6f, 
-	0x61, 0x64, 0x63, 0x6f, 0x6d, 0xfe, 0x01, 0x08, 
-	0x3d, 0x0f, 0xff, 0x7b, 0x11, 0x11, 0x12, 0x00, 
-	0x03, 0x00, 0x01, 0x00, 0x1c, 0x7b, 0x11, 0x11, 
-	0x12, 0x39, 0x02, 0x05, 0xdc, 0xff };
-
-
 //transformation mac address
 char *mac_ntoa(unsigned char *mac_d)
 {
@@ -169,146 +163,65 @@ char *mac_ntoa(unsigned char *mac_d)
 void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
 {
 	/*For take vlan tag*/
-	eth_header *WAN_ethhdr = (eth_header*)bytes;
-
-	/*For LAN buffer*/
-	eth_header *LAN_ethhdr = (eth_header*)pkt1;
-
-	//LAN : set & get source mac and destination mac
-	char LAN_dstmac[MAC_ADDRSTRLEN] = {};
-	char LAN_srcmac[MAC_ADDRSTRLEN] = {};
-	u_int16_t LAN_pack_type;
-
-	//LAN : set mac 
-	strlcpy(LAN_dstmac, mac_ntoa(LAN_ethhdr -> dmac), sizeof(LAN_dstmac));
-	strlcpy(LAN_srcmac, mac_ntoa(LAN_ethhdr -> smac), sizeof(LAN_srcmac));
-	//LAN : Ethernet type
-	LAN_pack_type = ntohs(LAN_ethhdr -> type);
+	eth_header *ethhdr = (eth_header*)bytes;
 
 
-	//WAN : set & get source mac and destination mac
-	char WAN_dstmac[MAC_ADDRSTRLEN] = {};
-	char WAN_srcmac[MAC_ADDRSTRLEN] = {};
-	u_int16_t WAN_pack_type;
+	char timebuf[64];
+	memset(timebuf, 0, sizeof(timebuf));
 
-	//WAN : set mac 
-	strlcpy(WAN_dstmac, mac_ntoa(WAN_ethhdr -> dmac), sizeof(WAN_dstmac));
-	strlcpy(WAN_srcmac, mac_ntoa(WAN_ethhdr -> smac), sizeof(WAN_srcmac));
-	//WAN : Ethernet type
-	WAN_pack_type = ntohs(WAN_ethhdr -> type);
+	//set & get source mac and destination mac
+	char dstmac[MAC_ADDRSTRLEN] = {};
+	char srcmac[MAC_ADDRSTRLEN] = {};
+	u_int16_t pack_type;
+
+	//set mac
+	strlcpy(dstmac, mac_ntoa(ethhdr -> dmac), sizeof(dstmac));
+	strlcpy(srcmac, mac_ntoa(ethhdr -> smac), sizeof(srcmac));
+	pack_type = ntohs(ethhdr -> type);
 	
-
-
-
 	//check buffer length have enough normal ethernet buffer
 	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header)){
 		return;
 	}
 
-	/*if(pack_type <= 1500)
-		printf("IEEE 802.3 Ethernet Frame:\n");
-	else
-		printf("Ethernet Frame:\n");
-	*/
-	char timebuf[64];
-	memset(timebuf, 0, sizeof(timebuf));
 	if( ctime_r(&header -> ts.tv_sec, timebuf) == NULL)
 	{
 		return;
 	}
-	//printf("Capfilter Length : %d, Total Length : %d\n", header -> caplen, header -> len);
 
-	//printf("--------------------------------------------------------------------------\n");
+	
 
-	//show mac address
-	//printf("Destination MAC address : %17s\n", dstmac);
-	//printf("Source MAC address      : %17s\n", srcmac);
+	/*send buf vlan id*/
+	unsigned short pkt_tpid = htons((pkt1[15] << 8) | pkt1[16]);
 
-	//unsigned short tpid = htons(ethhdr -> tpid);
-
-
-	if(ChangeMode == "DVGM")
-	{
-		/*receive buf checksum , must to mach send buf checksum*/
-		unsigned short vlan_checksum = (bytes[18] << 8) | bytes[19];
-		if(vlan_checksum == 0xdead)
-		{
-		printf("------------------------------- DVGM Mode ---------------------------\n");
-			/*send buf vlan id*/
-		unsigned short pkt_tpid = htons((pkt1[15] << 8) | pkt1[16]);
+	/*receive buf checksum , must to mach send buf checksum*/
+	unsigned short vlan_checksum = (bytes[18] << 8) | bytes[19];
 
 
 	/*ethnet type*/
 	unsigned short sendbuf_ethtype = pkt1[12] << 8 | pkt1[13];
+	unsigned short receivebuf_ethtype = bytes[12] << 8 | bytes[13];
 
-
+	if(vlan_checksum == 0xdead)
+	{
 		printf("Current Send Times : %s",timebuf);
 
 		printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
 	
-		printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[0]&0xff,pkt1[1]&0xff,pkt1[2]&0xff,pkt1[3]&0xff,pkt1[4]&0xff,pkt1[5]&0xff,WAN_dstmac);
+		printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[0]&0xff,pkt1[1]&0xff,pkt1[2]&0xff,pkt1[3]&0xff,pkt1[4]&0xff,pkt1[5]&0xff,dstmac);
 	
-		printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[6]&0xff,pkt1[7]&0xff,pkt1[8]&0xff,pkt1[9]&0xff,pkt1[10]&0xff,pkt1[11]&0xff,WAN_srcmac);
+		printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[6]&0xff,pkt1[7]&0xff,pkt1[8]&0xff,pkt1[9]&0xff,pkt1[10]&0xff,pkt1[11]&0xff,srcmac);
 	
-		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n", LAN_pack_type, WAN_pack_type);
+		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",sendbuf_ethtype, receivebuf_ethtype);
 		
 		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",pkt1[302],pkt1[303],pkt1[304],pkt1[305],pkt1[306],pkt1[307],pkt1[308],pkt1[309],pkt1[310]);
 		
 		printf("         | %c%c%c%c%c%c%c%c%c\n",bytes[298],bytes[299],bytes[300],bytes[301],bytes[302],bytes[303],bytes[304],bytes[305],bytes[306]);
 
-		printf("802.1Q Virtual LAN ID ---> %u\n",htons(LAN_ethhdr -> tpid));
+		printf("802.1Q Virtual LAN ID ---> %u\n",pkt_tpid);
 		
-		/*Send buffer to ip structure*/
 		dump_ip((ip_header*)(bytes + sizeof(eth_header) - 4));
-		}
 	}
-
-	else if(ChangeMode == "SVGM")
-	{
-	/*receive buf checksum , must to mach send buf checksum*/
-	unsigned short vlan_checksum = (bytes[22] << 8) | bytes[23];
-	if(vlan_checksum == 0xdead)
-	{
-		printf("------------------------------- SVGM Mode ---------------------------\n");
-
-	/*send buf vlan id*/
-	unsigned short pkt_tpid = htons((pkt2[15] << 8) | pkt2[16]);
-
-
-	/*ethnet type*/
-	unsigned short sendbuf_ethtype = pkt2[12] << 8 | pkt2[13];
-
-
-		printf("Current Send Times : %s",timebuf);
-
-		printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
-	
-		printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[0]&0xff,pkt2[1]&0xff,pkt2[2]&0xff,pkt2[3]&0xff,pkt2[4]&0xff,pkt2[5]&0xff,WAN_dstmac);
-	
-		printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[6]&0xff,pkt2[7]&0xff,pkt2[8]&0xff,pkt2[9]&0xff,pkt2[10]&0xff,pkt2[11]&0xff,WAN_srcmac);
-	
-		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",LAN_pack_type,WAN_pack_type);
-		
-		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",pkt2[302],pkt2[303],pkt2[304],pkt2[305],pkt2[306],pkt2[307],pkt2[308],pkt2[309],pkt2[310]);
-		
-		printf("         | %c%c%c%c%c%c%c%c%c\n",bytes[302],bytes[303],bytes[304],bytes[305],bytes[306],bytes[307],bytes[308],bytes[309],bytes[310]);
-
-		printf("802.1Q Virtual LAN ID : %u          |  %u\n",htons(LAN_ethhdr->tpid),htons(WAN_ethhdr->tpid));
-
-		dump_ip((ip_header*)(bytes + sizeof(eth_header)));
-		}
-	}
-
-	/*switch(ntohs(ethhdr -> vid))
-	{
-		case ETHERTYPE_IP:
-			dump_ip((ip_header*)(bytes + sizeof(eth_header)));
-		break;
-
-		default:
-			dump_ip((ip_header*)(bytes + sizeof(eth_header) - 4));
-		break;
-	}*/
 }
 
 void dump_ip(ip_header *ipv4)
@@ -318,11 +231,6 @@ void dump_ip(ip_header *ipv4)
 		if(htons(ipv4 -> ip_id) == 0xdead)
 		{
 			ReceiveBuf = (char*)ipv4;
-			/*for(re = 0; re < sizeof(pkt1); re++)
-			{
-				//printf("0x%02x,",ReceiveBuf[re]);
-				ReceiveBuf[re] += 0x01;
-			}*/
 			printf("\n");
 			printf("***************** Compare Data **********************************\n");
 			printf("Compare data --------> %s\n", !strcmp(SendBuf, ReceiveBuf) ? "true" : "false");
@@ -331,7 +239,7 @@ void dump_ip(ip_header *ipv4)
 			/*Clear ReceiveBuf to zero*/
 			memset(ReceiveBuf,0,1024);
 		}
-
+		/*
 		char src[64];
 		char dst[64];
 		
@@ -348,12 +256,9 @@ void dump_ip(ip_header *ipv4)
 		unsigned short ipchecksum = htons(ipv4 -> ip_sum);
 
 
-	int test = 1;
-
 		inet_ntop(AF_INET, &ipv4 -> ip_src, src, sizeof(src));
 		inet_ntop(AF_INET, &ipv4 -> ip_dst, dst, sizeof(dst));
-	if(test == 0)
-	{
+		
 		printf("------------------ Internet Protocol Version 4 -----------------------\n");
 		printf("IP Version   ------------------> %u\n", ip_v);
 		printf("IP Type of Service   ----------> %u\n", iptos);
@@ -378,10 +283,10 @@ void dump_ip(ip_header *ipv4)
 		printf("UDP Length ---------------------> %d\n", udplen);
 		printf("UDP Checksum -------------------> 0x%04x\n", udpchecksum);
 		printf("----------------------------------------------------------------------\n");
-	}
+*/
 }
 
-
+/*Receive WAN Buffer*/
 void read_loop()
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -391,7 +296,7 @@ void read_loop()
 	bpf_u_int32 net,mask;
 
 	//CASTLE USEING : ubuntu 12.04
-	p_read = pcap_open_live("eth2", 65536, 1, 10, errbuf);
+	p_read = pcap_open_live(Ether_out, 65536, 1, 10, errbuf);
 	//ubuntu 16.04
 	//p_read = pcap_open_live("ens33", 65536, 1, 10, errbuf);
 	
@@ -427,13 +332,8 @@ void read_loop()
 
 //compare word to enter
 char *buf;
-//char *s_get;
-//int tx_len = 0;
 
-/*show debug data*/
-//int SendDataFlag = 0;
-//int ReceiveDataFlag = 0;
-
+/*Sending Buffer from LAN to WAN*/
 void send_packet()
 {
 	
@@ -445,7 +345,7 @@ void send_packet()
 	pcap_t *p_send;
 	
 	//CASTLE USEING : ubuntu 12.04
-	p_send = pcap_open_live("eth14", 65536, 1, 10, errbuf);
+	p_send = pcap_open_live(Ether_in, 65536, 1, 10, errbuf);
 	//ubuntu 16.04
 	//p_send = pcap_open_live("ens33", 65536, 1, 10, errbuf);
 	
@@ -459,7 +359,6 @@ void send_packet()
 	{
 		if(!(strcmp(buf, "DVGM\n\0")))
 		{
-			ChangeMode = "DVGM";
 			while(DHCPtimes < 50)
 			{
 				DHCPtimes++;
@@ -475,26 +374,6 @@ void send_packet()
 				pkt1[15] += 0x01;
 				printf("\n");
 			}
-			//memset(ChangeMode, 0, 1024);
-			DHCPtimes = 0;
-		}
-		else if(!(strcmp(buf, "SVGM\n\0")))
-		{
-			ChangeMode = "SVGM";
-			while(DHCPtimes < 50)
-			{
-				DHCPtimes++;
-				printf("Send Times --------------> %d\n", DHCPtimes);
-				if(pcap_sendpacket(p_send, pkt2, 1024) < 0){
-					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
-					return 1;
-				}
-				sleep(2);
-				pkt2[11] += 0x01;
-				pkt2[15] += 0x01;
-				printf("\n");
-			}
-			//memset(ChangeMode, 0, 1024);
 			DHCPtimes = 0;
 		}
 		else if(!(strcmp(buf, "send\n\0")))
@@ -526,11 +405,20 @@ void send_packet()
 
 pthread_t pthreadSendPacket;
 pthread_t pthreadReadLoop;
-//int mv = 0;
-int main()
+
+
+
+int main(int argc ,char*argv[])
 {
 	int pth_send = 0;
 	int pth_read = 0;
+
+	/*set Ethernet Interface*/
+	Ether_in = argv[1];
+	Ether_out = argv[2];
+
+	printf("Ethernet Interface LAN ---> %s\n",argv[1]);
+	printf("Ethernet Interface WAN ---> %s\n",argv[2]);
 
 
 	int s = 0;
@@ -542,15 +430,6 @@ int main()
 		SendBuf[eth_ft++] = pkt1[s];
 	}
 	
-	
-	/*printf("\n");
-	printf("Send BUf................\n");
-	for(mv = 0; mv < sizeof(pkt1); mv++)
-	{
-		printf("0x%02x,",SendBuf[mv]);
-	}
-	printf("\n");*/
-
 	pth_send = pthread_create(&pthreadSendPacket, NULL, (void*)send_packet, NULL);
 	if( pth_send != 0 )
 	{

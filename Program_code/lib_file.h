@@ -1,10 +1,6 @@
 /*Basic lib*/
-#define d_vlan 1
 #define _BSD_SOURCE
-//#define __BEGIN_DECLS
-//#define __FAVOR_BSD 
 #define _USE_BSD 
-//#define _LINUX_UDP_H
 #include <stdio.h>
 #include <stdlib.h>
 
