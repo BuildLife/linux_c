@@ -168,9 +168,6 @@ char *mac_ntoa(unsigned char *mac_d)
 
 void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
 {
-	/*For take vlan tag*/
-	eth_header *WAN_ethhdr = (eth_header*)bytes;
-
 	/*For LAN buffer*/
 	eth_header *LAN_ethhdr = (eth_header*)pkt1;
 
@@ -185,6 +182,11 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	//LAN : Ethernet type
 	LAN_pack_type = ntohs(LAN_ethhdr -> type);
 
+
+
+
+	/*For WAN buffer*/
+	eth_header *WAN_ethhdr = (eth_header*)bytes;
 
 	//WAN : set & get source mac and destination mac
 	char WAN_dstmac[MAC_ADDRSTRLEN] = {};
@@ -233,22 +235,25 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 		unsigned short vlan_checksum = (bytes[18] << 8) | bytes[19];
 		if(vlan_checksum == 0xdead)
 		{
-		printf("------------------------------- DVGM Mode ---------------------------\n");
+			printf("------------------------------- DVGM Mode ---------------------------\n");
 			/*send buf vlan id*/
-		unsigned short pkt_tpid = htons((pkt1[15] << 8) | pkt1[16]);
+			unsigned short pkt_tpid = htons((pkt1[15] << 8) | pkt1[16]);
 
 
-	/*ethnet type*/
-	unsigned short sendbuf_ethtype = pkt1[12] << 8 | pkt1[13];
+			/*ethnet type*/
+			unsigned short sendbuf_ethtype = pkt1[12] << 8 | pkt1[13];
 
 
 		printf("Current Send Times : %s",timebuf);
 
 		printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
 	
-		printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[0]&0xff,pkt1[1]&0xff,pkt1[2]&0xff,pkt1[3]&0xff,pkt1[4]&0xff,pkt1[5]&0xff,WAN_dstmac);
+		//printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[0]&0xff,pkt1[1]&0xff,pkt1[2]&0xff,pkt1[3]&0xff,pkt1[4]&0xff,pkt1[5]&0xff,WAN_dstmac);
 	
-		printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[6]&0xff,pkt1[7]&0xff,pkt1[8]&0xff,pkt1[9]&0xff,pkt1[10]&0xff,pkt1[11]&0xff,WAN_srcmac);
+	//	printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[6]&0xff,pkt1[7]&0xff,pkt1[8]&0xff,pkt1[9]&0xff,pkt1[10]&0xff,pkt1[11]&0xff,WAN_srcmac);
+		printf("Destination 	: %17s | %17s\n",LAN_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s | %17s\n",LAN_srcmac, WAN_srcmac);
 	
 		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n", LAN_pack_type, WAN_pack_type);
 		
@@ -283,9 +288,12 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 
 		printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
 	
-		printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[0]&0xff,pkt2[1]&0xff,pkt2[2]&0xff,pkt2[3]&0xff,pkt2[4]&0xff,pkt2[5]&0xff,WAN_dstmac);
+	//	printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[0]&0xff,pkt2[1]&0xff,pkt2[2]&0xff,pkt2[3]&0xff,pkt2[4]&0xff,pkt2[5]&0xff,WAN_dstmac);
 	
-		printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[6]&0xff,pkt2[7]&0xff,pkt2[8]&0xff,pkt2[9]&0xff,pkt2[10]&0xff,pkt2[11]&0xff,WAN_srcmac);
+	//	printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[6]&0xff,pkt2[7]&0xff,pkt2[8]&0xff,pkt2[9]&0xff,pkt2[10]&0xff,pkt2[11]&0xff,WAN_srcmac);
+		printf("Destination 	: %17s | %17s\n",LAN_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s | %17s\n",LAN_srcmac, WAN_srcmac);
 	
 		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",LAN_pack_type,WAN_pack_type);
 		
@@ -485,13 +493,13 @@ void send_packet()
 			{
 				DHCPtimes++;
 				printf("Send Times --------------> %d\n", DHCPtimes);
-				if(pcap_sendpacket(p_send, pkt2, 1024) < 0){
+				if(pcap_sendpacket(p_send, pkt1, 1024) < 0){
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
 					return 1;
 				}
 				sleep(2);
-				pkt2[11] += 0x01;
-				pkt2[15] += 0x01;
+				pkt1[11] += 0x01;
+				pkt1[15] += 0x01;
 				printf("\n");
 			}
 			//memset(ChangeMode, 0, 1024);
