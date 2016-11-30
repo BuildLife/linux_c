@@ -7,9 +7,10 @@ char *SendBuf;
 char *ReceiveBuf;
 
 char *ChangeMode = "default";
+char *DHCPBufMode = "default";
 
-/*DHCP Discover buffer : DVGM*/
-char pkt1[] = {
+/*DHCP Discover buffer : docsis buffer*/
+char DHCPdocsisBuf[] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
 	0x7b, 0x11, 0x11, 0x12, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00, 
 	0x02, 0x18, 0xde, 0xad, 0x00, 0x00, 0x80, 0x11, 
@@ -80,80 +81,75 @@ char pkt1[] = {
 	0x03, 0x00, 0x01, 0x00, 0x1c, 0x7b, 0x11, 0x11, 
 	0x12, 0x39, 0x02, 0x05, 0xdc, 0xff };
 
-
-
-/*DHCP Discover buffer : SVGM*/
-char pkt2[] = {
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
-	0x7b, 0x11, 0x11, 0x12, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00, 
-	0x02, 0x18, 0xde, 0xad, 0x00, 0x00, 0x80, 0x11, 
-	0x5a, 0x28, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 
-	0xff, 0xff, 0x00, 0x44, 0x00, 0x43, 0x02, 0x04, 
-	0xcd, 0x21, 0x01, 0x01, 0x06, 0x00, 0x29, 0xd9, 
-	0xaa, 0x6c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c, 
-	0x7b, 0x11, 0x11, 0x12, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x82, 
-	0x53, 0x63, 0x35, 0x01, 0x01, 0x37, 0x09, 0x01, 
-	0x02, 0x03, 0x04, 0x07, 0x06, 0x64, 0x7a, 0x7d, 
-	0x3c, 0x0a, 0x64, 0x6f, 0x63, 0x73, 0x69, 0x73, 
-	0x33, 0x2e, 0x30, 0x3a, 0x7d, 0x88, 0x00, 0x00, 
-	0x11, 0x8b, 0x83, 0x01, 0x01, 0x02, 0x05, 0x7e, 
-	0x01, 0x01, 0x01, 0x02, 0x01, 0x03, 0x03, 0x01, 
-	0x01, 0x04, 0x01, 0x01, 0x05, 0x01, 0x01, 0x06, 
-	0x01, 0x01, 0x07, 0x01, 0x0f, 0x08, 0x01, 0x10, 
-	0x09, 0x01, 0x03, 0x0a, 0x01, 0x01, 0x0b, 0x01, 
-	0x18, 0x0c, 0x01, 0x01, 0x0d, 0x02, 0x00, 0x40, 
-	0x0e, 0x02, 0x00, 0x10, 0x0f, 0x01, 0x01, 0x10, 
-	0x04, 0x00, 0x00, 0x00, 0x04, 0x11, 0x01, 0x00, 
-	0x14, 0x01, 0x00, 0x15, 0x01, 0x3f, 0x16, 0x01, 
-	0x01, 0x17, 0x01, 0x01, 0x18, 0x01, 0x04, 0x19, 
-	0x01, 0x04, 0x1a, 0x01, 0x04, 0x1b, 0x01, 0x20, 
-	0x1c, 0x01, 0x02, 0x1d, 0x01, 0x08, 0x1e, 0x01, 
-	0x20, 0x1f, 0x01, 0x10, 0x20, 0x01, 0x10, 0x21, 
-	0x01, 0x02, 0x22, 0x01, 0x01, 0x23, 0x01, 0x00, 
-	0x24, 0x01, 0x00, 0x25, 0x01, 0x01, 0x26, 0x02, 
-	0x00, 0xff, 0x27, 0x01, 0x00, 0x28, 0x01, 0x00, 
-	0x2c, 0x04, 0x00, 0x00, 0x00, 0x01, 0x2b, 0x50, 
-	0x02, 0x03, 0x45, 0x43, 0x4d, 0x03, 0x08, 0x45, 
-	0x43, 0x4d, 0x3a, 0x45, 0x4d, 0x54, 0x41, 0x04, 
-	0x00, 0x05, 0x04, 0x56, 0x31, 0x2e, 0x30, 0x06, 
-	0x09, 0x35, 0x2e, 0x35, 0x2e, 0x31, 0x30, 0x6d, 
-	0x70, 0x35, 0x07, 0x0a, 0x32, 0x2e, 0x34, 0x2e, 
-	0x30, 0x62, 0x65, 0x74, 0x61, 0x33, 0x08, 0x06, 
-	0x30, 0x30, 0x31, 0x30, 0x31, 0x38, 0x09, 0x0b, 
-	0x42, 0x43, 0x4d, 0x39, 0x33, 0x33, 0x38, 0x33, 
-	0x56, 0x43, 0x4d, 0x0a, 0x08, 0x42, 0x72, 0x6f, 
-	0x61, 0x64, 0x63, 0x6f, 0x6d, 0xfe, 0x01, 0x08, 
-	0x3d, 0x0f, 0xff, 0x7b, 0x11, 0x11, 0x12, 0x00, 
-	0x03, 0x00, 0x01, 0x00, 0x1c, 0x7b, 0x11, 0x11, 
-	0x12, 0x39, 0x02, 0x05, 0xdc, 0xff };
-
+/*DHCP Discover buffer : pktc buffer*/
+char DHCPpktcBuf[] = {
+0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
+0x7b, 0x22, 0x22, 0x23, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00, 
+0x02, 0x07, 0xde, 0xad, 0x00, 0x00, 0x80, 0x11, 
+0x5a, 0x39, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 
+0xff, 0xff, 0x00, 0x44, 0x00, 0x43, 0x01, 0xf3, 
+0x81, 0xf6, 0x01, 0x01, 0x06, 0x00, 0x4f, 0x8a, 
+0xe6, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c, 
+0x7b, 0x22, 0x22, 0x23, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x82, 
+0x53, 0x63, 0x35, 0x01, 0x01, 0x37, 0x09, 0x01, 
+0x02, 0x03, 0x06, 0x07, 0x0c, 0x0f, 0x36, 0x7a, 
+0x3c, 0x7a, 0x70, 0x6b, 0x74, 0x63, 0x31, 0x2e, 
+0x35, 0x3a, 0x30, 0x35, 0x33, 0x37, 0x30, 0x31, 
+0x30, 0x31, 0x30, 0x31, 0x30, 0x32, 0x30, 0x31, 
+0x30, 0x32, 0x30, 0x39, 0x30, 0x31, 0x30, 0x31, 
+0x30, 0x62, 0x30, 0x35, 0x30, 0x36, 0x30, 0x39, 
+0x30, 0x65, 0x30, 0x64, 0x30, 0x66, 0x30, 0x63, 
+0x30, 0x31, 0x30, 0x31, 0x30, 0x64, 0x30, 0x31, 
+0x30, 0x31, 0x30, 0x66, 0x30, 0x31, 0x30, 0x31, 
+0x31, 0x30, 0x30, 0x31, 0x30, 0x39, 0x31, 0x32, 
+0x30, 0x32, 0x30, 0x30, 0x30, 0x37, 0x31, 0x33, 
+0x30, 0x31, 0x30, 0x31, 0x31, 0x34, 0x30, 0x31, 
+0x30, 0x31, 0x31, 0x35, 0x30, 0x31, 0x30, 0x31, 
+0x31, 0x36, 0x30, 0x31, 0x30, 0x31, 0x31, 0x37, 
+0x30, 0x33, 0x30, 0x32, 0x30, 0x30, 0x33, 0x66, 
+0x31, 0x38, 0x30, 0x31, 0x30, 0x30, 0x31, 0x39, 
+0x30, 0x31, 0x30, 0x30, 0x2b, 0x59, 0x02, 0x04, 
+0x45, 0x4d, 0x54, 0x41, 0x04, 0x06, 0x31, 0x31, 
+0x31, 0x31, 0x31, 0x32, 0x05, 0x04, 0x56, 0x31, 
+0x2e, 0x30, 0x06, 0x0d, 0x33, 0x2e, 0x39, 0x2e, 
+0x32, 0x31, 0x2e, 0x31, 0x36, 0x6d, 0x70, 0x35, 
+0x20, 0x07, 0x0a, 0x32, 0x2e, 0x34, 0x2e, 0x30, 
+0x62, 0x65, 0x74, 0x61, 0x33, 0x08, 0x03, 0x00, 
+0x1c, 0x7b, 0x09, 0x0b, 0x42, 0x43, 0x4d, 0x39, 
+0x33, 0x33, 0x38, 0x33, 0x56, 0x43, 0x4d, 0x0a, 
+0x08, 0x42, 0x72, 0x6f, 0x61, 0x64, 0x63, 0x6f, 
+0x6d, 0x1f, 0x06, 0x00, 0x1c, 0x7b, 0x22, 0x22, 
+0x23, 0x20, 0x04, 0xd3, 0x54, 0xb6, 0x5c, 0x3d, 
+0x0f, 0xff, 0x7b, 0x22, 0x22, 0x23, 0x00, 0x03, 
+0x00, 0x01, 0x00, 0x1c, 0x7b, 0x22, 0x22, 0x23, 
+0x39, 0x02, 0x05, 0xdc, 0xff };
 
 //transformation mac address
 char *mac_ntoa(unsigned char *mac_d)
@@ -164,180 +160,200 @@ char *mac_ntoa(unsigned char *mac_d)
 	return MACSTR;
 }
 
-
-
-void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
+/*DHCP SVGM Mode*/
+void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc)
 {
-	/*For LAN buffer*/
-	eth_header *LAN_ethhdr = (eth_header*)pkt1;
-
+	/********************************* For LAN buffer **************************************/
 	//LAN : set & get source mac and destination mac
-	char LAN_dstmac[MAC_ADDRSTRLEN] = {};
-	char LAN_srcmac[MAC_ADDRSTRLEN] = {};
-	u_int16_t LAN_pack_type;
+	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_pktc_dstmac[MAC_ADDRSTRLEN] = {}, LAN_pktc_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t LAN_docsis_type;
+	u_int16_t LAN_docsis_TPID;
+	u_int16_t LAN_pktc_type;
+	u_int16_t LAN_pktc_TPID;
 
 	//LAN : set mac 
-	strlcpy(LAN_dstmac, mac_ntoa(LAN_ethhdr -> dmac), sizeof(LAN_dstmac));
-	strlcpy(LAN_srcmac, mac_ntoa(LAN_ethhdr -> smac), sizeof(LAN_srcmac));
+	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis -> dmac), sizeof(LAN_docsis_dstmac));
+	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis -> smac), sizeof(LAN_docsis_srcmac));
+	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc -> dmac), sizeof(LAN_pktc_dstmac));
+	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc -> smac), sizeof(LAN_pktc_srcmac));
+
 	//LAN : Ethernet type
-	LAN_pack_type = ntohs(LAN_ethhdr -> type);
+	LAN_docsis_type = ntohs(LAN_docsis -> type);
+	LAN_pktc_type = ntohs(LAN_pktc -> type);
 
+	//LAN : TPID
+	LAN_docsis_TPID = ntohs(LAN_docsis -> tpid);
+	LAN_pktc_TPID = ntohs(LAN_pktc -> tpid);
+	/****************************************************************************************/
 
-
-
-	/*For WAN buffer*/
-	eth_header *WAN_ethhdr = (eth_header*)bytes;
+	/********************************* For WAN buffer ***************************************/
+	eth_header *WAN_ethhdr = (eth_header*)content;
 
 	//WAN : set & get source mac and destination mac
-	char WAN_dstmac[MAC_ADDRSTRLEN] = {};
-	char WAN_srcmac[MAC_ADDRSTRLEN] = {};
-	u_int16_t WAN_pack_type;
+	char WAN_dstmac[MAC_ADDRSTRLEN] = {}, WAN_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t WAN_type;
+	u_int16_t WAN_TPID;
 
 	//WAN : set mac 
 	strlcpy(WAN_dstmac, mac_ntoa(WAN_ethhdr -> dmac), sizeof(WAN_dstmac));
 	strlcpy(WAN_srcmac, mac_ntoa(WAN_ethhdr -> smac), sizeof(WAN_srcmac));
 	//WAN : Ethernet type
-	WAN_pack_type = ntohs(WAN_ethhdr -> type);
+	WAN_type = ntohs(WAN_ethhdr -> type);
+
+	//WAN : TPID
+	WAN_TPID = ntohs(WAN_ethhdr -> tpid);
+	/****************************************************************************************/
 	
+	printf("------------------------------- SVGM Mode ---------------------------\n");
+	printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
+	if(DHCPBufMode == "docsis")
+	{
+		printf("Destination 	: %17s | %17s\n",LAN_docsis_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s | %17s\n",LAN_docsis_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n", LAN_docsis_type, WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",DHCPdocsisBuf[302],DHCPdocsisBuf[303],DHCPdocsisBuf[304],DHCPdocsisBuf[305],DHCPdocsisBuf[306],DHCPdocsisBuf[307],DHCPdocsisBuf[308],DHCPdocsisBuf[309],DHCPdocsisBuf[310]);
+		
+		printf("         | %c%c%c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308],content[309],content[310]);
 
-
-
-	//check buffer length have enough normal ethernet buffer
-	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header)){
-		return;
+		printf("802.1Q Virtual LAN ID : %u        | %u\n",LAN_docsis_TPID,WAN_TPID);
 	}
-
-	/*if(pack_type <= 1500)
-		printf("IEEE 802.3 Ethernet Frame:\n");
-	else
-		printf("Ethernet Frame:\n");
-	*/
-	char timebuf[64];
-	memset(timebuf, 0, sizeof(timebuf));
-	if( ctime_r(&header -> ts.tv_sec, timebuf) == NULL)
+	else if(DHCPBufMode == "pktc")
 	{
-		return;
-	}
-	//printf("Capfilter Length : %d, Total Length : %d\n", header -> caplen, header -> len);
+		printf("Destination 	: %17s | %17s\n",LAN_pktc_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s | %17s\n",LAN_pktc_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",LAN_pktc_type,WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c",DHCPpktcBuf[302],DHCPpktcBuf[303],DHCPpktcBuf[304],DHCPpktcBuf[305],DHCPpktcBuf[306],DHCPpktcBuf[307],DHCPpktcBuf[308]);
+		
 
-	//printf("--------------------------------------------------------------------------\n");
+		printf("           | %c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308]);
 
-	//show mac address
-	//printf("Destination MAC address : %17s\n", dstmac);
-	//printf("Source MAC address      : %17s\n", srcmac);
-
-	//unsigned short tpid = htons(ethhdr -> tpid);
-
-
-	if(ChangeMode == "DVGM")
+		printf("802.1Q Virtual LAN ID : %u        | %u\n",LAN_pktc_TPID,WAN_TPID);
+		
+		/*int eth_ft = 0;
+		int s = 0;
+	for(s = 18; s < sizeof(DHCPpktcBuf); s++)
 	{
-		/*receive buf checksum , must to mach send buf checksum*/
-		unsigned short vlan_checksum = (bytes[18] << 8) | bytes[19];
-		if(vlan_checksum == 0xdead)
-		{
-			printf("------------------------------- DVGM Mode ---------------------------\n");
-			/*send buf vlan id*/
-			unsigned short pkt_tpid = htons((pkt1[15] << 8) | pkt1[16]);
-
-
-			/*ethnet type*/
-			unsigned short sendbuf_ethtype = pkt1[12] << 8 | pkt1[13];
-
-
-		printf("Current Send Times : %s",timebuf);
-
-		printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
-	
-		//printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[0]&0xff,pkt1[1]&0xff,pkt1[2]&0xff,pkt1[3]&0xff,pkt1[4]&0xff,pkt1[5]&0xff,WAN_dstmac);
-	
-	//	printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt1[6]&0xff,pkt1[7]&0xff,pkt1[8]&0xff,pkt1[9]&0xff,pkt1[10]&0xff,pkt1[11]&0xff,WAN_srcmac);
-		printf("Destination 	: %17s | %17s\n",LAN_dstmac, WAN_dstmac);
-	
-		printf("Source      	: %17s | %17s\n",LAN_srcmac, WAN_srcmac);
-	
-		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n", LAN_pack_type, WAN_pack_type);
-		
-		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",pkt1[302],pkt1[303],pkt1[304],pkt1[305],pkt1[306],pkt1[307],pkt1[308],pkt1[309],pkt1[310]);
-		
-		printf("         | %c%c%c%c%c%c%c%c%c\n",bytes[298],bytes[299],bytes[300],bytes[301],bytes[302],bytes[303],bytes[304],bytes[305],bytes[306]);
-
-		printf("802.1Q Virtual LAN ID ---> %u\n",htons(LAN_ethhdr -> tpid));
-		
-		/*Send buffer to ip structure*/
-		dump_ip((ip_header*)(bytes + sizeof(eth_header) - 4));
-		}
-	}
-
-	else if(ChangeMode == "SVGM")
-	{
-	/*receive buf checksum , must to mach send buf checksum*/
-	unsigned short vlan_checksum = (bytes[22] << 8) | bytes[23];
-	if(vlan_checksum == 0xdead)
-	{
-		printf("------------------------------- SVGM Mode ---------------------------\n");
-
-	/*send buf vlan id*/
-	unsigned short pkt_tpid = htons((pkt2[15] << 8) | pkt2[16]);
-
-
-	/*ethnet type*/
-	unsigned short sendbuf_ethtype = pkt2[12] << 8 | pkt2[13];
-
-
-		printf("Current Send Times : %s",timebuf);
-
-		printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
-	
-	//	printf("Destination 	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[0]&0xff,pkt2[1]&0xff,pkt2[2]&0xff,pkt2[3]&0xff,pkt2[4]&0xff,pkt2[5]&0xff,WAN_dstmac);
-	
-	//	printf("Source      	: %02x:%02x:%02x:%02x:%02x:%02x | %17s\n",pkt2[6]&0xff,pkt2[7]&0xff,pkt2[8]&0xff,pkt2[9]&0xff,pkt2[10]&0xff,pkt2[11]&0xff,WAN_srcmac);
-		printf("Destination 	: %17s | %17s\n",LAN_dstmac, WAN_dstmac);
-	
-		printf("Source      	: %17s | %17s\n",LAN_srcmac, WAN_srcmac);
-	
-		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",LAN_pack_type,WAN_pack_type);
-		
-		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",pkt2[302],pkt2[303],pkt2[304],pkt2[305],pkt2[306],pkt2[307],pkt2[308],pkt2[309],pkt2[310]);
-		
-		printf("         | %c%c%c%c%c%c%c%c%c\n",bytes[302],bytes[303],bytes[304],bytes[305],bytes[306],bytes[307],bytes[308],bytes[309],bytes[310]);
-
-		printf("802.1Q Virtual LAN ID : %u          |  %u\n",htons(LAN_ethhdr->tpid),htons(WAN_ethhdr->tpid));
-
-		dump_ip((ip_header*)(bytes + sizeof(eth_header)));
-		}
-	}
-
-	/*switch(ntohs(ethhdr -> vid))
-	{
-		case ETHERTYPE_IP:
-			dump_ip((ip_header*)(bytes + sizeof(eth_header)));
-		break;
-
-		default:
-			dump_ip((ip_header*)(bytes + sizeof(eth_header) - 4));
-		break;
+		SendBuf[eth_ft++] = DHCPpktcBuf[s];
 	}*/
+	}
+	
+		/*Send buffer to ip structure*/
+		dump_ip((ip_header*)(content + sizeof(eth_header)));
 }
+
+
+/*DHCP DVGM Mode*/
+void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc)
+{
+	/********************************* For LAN buffer **************************************/
+	//LAN : set & get source mac and destination mac
+	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_pktc_dstmac[MAC_ADDRSTRLEN] = {}, LAN_pktc_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t LAN_docsis_type;
+	u_int16_t LAN_docsis_TPID;
+	u_int16_t LAN_pktc_type;
+	u_int16_t LAN_pktc_TPID;
+
+	//LAN : set mac 
+	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis -> dmac), sizeof(LAN_docsis_dstmac));
+	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis -> smac), sizeof(LAN_docsis_srcmac));
+	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc -> dmac), sizeof(LAN_pktc_dstmac));
+	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc -> smac), sizeof(LAN_pktc_srcmac));
+
+	//LAN : Ethernet type
+	LAN_docsis_type = ntohs(LAN_docsis -> type);
+	LAN_pktc_type = ntohs(LAN_pktc -> type);
+
+	//LAN : TPID
+	LAN_docsis_TPID = ntohs(LAN_docsis -> tpid);
+	LAN_pktc_TPID = ntohs(LAN_pktc -> tpid);
+	/****************************************************************************************/
+
+	/********************************* For WAN buffer ***************************************/
+	eth_header *WAN_ethhdr = (eth_header*)content;
+
+	//WAN : set & get source mac and destination mac
+	char WAN_dstmac[MAC_ADDRSTRLEN] = {}, WAN_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t WAN_type;
+	u_int16_t WAN_TPID;
+
+	//WAN : set mac 
+	strlcpy(WAN_dstmac, mac_ntoa(WAN_ethhdr -> dmac), sizeof(WAN_dstmac));
+	strlcpy(WAN_srcmac, mac_ntoa(WAN_ethhdr -> smac), sizeof(WAN_srcmac));
+	//WAN : Ethernet type
+	WAN_type = ntohs(WAN_ethhdr -> type);
+
+	/****************************************************************************************/
+
+	
+	printf("------------------------------- DVGM Mode ---------------------------\n");
+	printf("-------------- LAN Port ----------- | ---------- WAN Port -----------\n");
+	if(DHCPBufMode == "docsis")
+	{
+		printf("Destination 	: %17s | %17s\n",LAN_docsis_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s | %17s\n",LAN_docsis_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",LAN_docsis_type,WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",DHCPdocsisBuf[302],DHCPdocsisBuf[303],DHCPdocsisBuf[304],DHCPdocsisBuf[305],DHCPdocsisBuf[306],DHCPdocsisBuf[307],DHCPdocsisBuf[308],DHCPdocsisBuf[309],DHCPdocsisBuf[310]);
+		
+		printf("         | %c%c%c%c%c%c%c%c%c\n",content[298],content[299],content[300],content[301],content[302],content[303],content[304],content[305],content[306]);
+
+		printf("802.1Q Virtual LAN ID : %u        | %u\n",LAN_docsis_TPID);
+	}
+	else if(DHCPBufMode == "pktc")
+	{
+	
+		printf("Destination 	: %17s | %17s\n",LAN_pktc_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s | %17s\n",LAN_pktc_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x            | 0x%04x\n",LAN_pktc_type,WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c",DHCPpktcBuf[302],DHCPpktcBuf[303],DHCPpktcBuf[304],DHCPpktcBuf[305],DHCPpktcBuf[306],DHCPpktcBuf[307],DHCPpktcBuf[308]);
+		
+
+		printf("           | %c%c%c%c%c%c%c\n", content[298], content[299], content[300], content[301], content[302], content[303], content[304]);
+
+		printf("802.1Q Virtual LAN ID : %u        | %u\n", LAN_pktc_TPID);
+	}
+		
+	/*Send buffer to ip structure*/
+	dump_ip((ip_header*)(content + sizeof(eth_header) - 4));
+}
+
 
 void dump_ip(ip_header *ipv4)
 {
-		/*receive data*/
-		int re = 0;
+		memset(ReceiveBuf,0,1024);
+		char test1[] = {0x09,0x12};
+		char *qq = test1;
+		
+		char test2[] = {0x09,0x12};
+		char *tt = test2;
 		if(htons(ipv4 -> ip_id) == 0xdead)
 		{
 			ReceiveBuf = (char*)ipv4;
-			/*for(re = 0; re < sizeof(pkt1); re++)
-			{
-				//printf("0x%02x,",ReceiveBuf[re]);
-				ReceiveBuf[re] += 0x01;
-			}*/
+			SendBuf[0] += 9;
 			printf("\n");
 			printf("***************** Compare Data **********************************\n");
-			printf("Compare data --------> %s\n", !strcmp(SendBuf, ReceiveBuf) ? "true" : "false");
+			printf("Compare data --------> %s\n", !strncmp(SendBuf, ReceiveBuf,sizeof(DHCPdocsisBuf)) ? "true" : "false");
+		//	printf("Compare data --------> %s\n", !strncmp(test1,test2,sizeof(test1)) ? "true" : "false");
 			printf("*****************************************************************\n");
 			
 			/*Clear ReceiveBuf to zero*/
-			memset(ReceiveBuf,0,1024);
 		}
 
 		char src[64];
@@ -390,6 +406,49 @@ void dump_ip(ip_header *ipv4)
 }
 
 
+void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
+{
+	/*For LAN docsis buffer*/
+	eth_header *LAN_docsis_ethhdr = (eth_header*)DHCPdocsisBuf;
+
+	/*For LAN pktc buffer*/
+	eth_header *LAN_pktc_ethhdr = (eth_header*)DHCPpktcBuf;
+
+
+	//check buffer length have enough normal ethernet buffer
+	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header)){
+		return;
+	}
+
+	char timebuf[64];
+	memset(timebuf, 0, sizeof(timebuf));
+	if( ctime_r(&header -> ts.tv_sec, timebuf) == NULL)
+	{
+		return;
+	}
+
+	if(ChangeMode == "DVGM")
+	{
+		unsigned short DVGM_checksum = (bytes[18] << 8) | bytes[19];
+		if(DVGM_checksum == 0xdead)
+		{
+			printf("Current Send Times : %s",timebuf);
+			DVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
+		}
+	}
+
+	else if(ChangeMode == "SVGM")
+	{
+		unsigned short SVGM_checksum = (bytes[22] << 8) | bytes[23];
+		if(SVGM_checksum == 0xdead)
+		{
+			printf("Current Send Times : %s",timebuf);
+			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
+		}
+	}
+
+}
+
 void read_loop()
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -435,12 +494,6 @@ void read_loop()
 
 //compare word to enter
 char *buf;
-//char *s_get;
-//int tx_len = 0;
-
-/*show debug data*/
-//int SendDataFlag = 0;
-//int ReceiveDataFlag = 0;
 
 void send_packet()
 {
@@ -472,18 +525,28 @@ void send_packet()
 			{
 				DHCPtimes++;
 				printf("Send Times --------------> %d\n", DHCPtimes);
-				if(pcap_sendpacket(p_send, pkt1, 1024) < 0){
+				DHCPBufMode = "docsis";
+				if(pcap_sendpacket(p_send, DHCPdocsisBuf, 1024) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
+					return 1;
+				}
+				sleep(2);
+				DHCPBufMode = "pktc";
+				if(pcap_sendpacket(p_send, DHCPpktcBuf, 1024) < 0){
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
 					return 1;
 				}
 				sleep(2);
 				//cm mac 
-				pkt1[11] += 0x01;
+				DHCPdocsisBuf[11] += 0x01;
+				DHCPpktcBuf[11] += 0x01;
 				//vlan tag
-				pkt1[15] += 0x01;
+				DHCPdocsisBuf[15] += 0x01;
+				DHCPpktcBuf[15] += 0x01;
 				printf("\n");
+
+				DHCPBufMode = "default";
 			}
-			//memset(ChangeMode, 0, 1024);
 			DHCPtimes = 0;
 		}
 		else if(!(strcmp(buf, "SVGM\n\0")))
@@ -493,28 +556,58 @@ void send_packet()
 			{
 				DHCPtimes++;
 				printf("Send Times --------------> %d\n", DHCPtimes);
-				if(pcap_sendpacket(p_send, pkt1, 1024) < 0){
+				DHCPBufMode = "docsis";
+			
+				if(pcap_sendpacket(p_send, DHCPdocsisBuf, 1024) < 0){
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
 					return 1;
 				}
 				sleep(2);
-				pkt1[11] += 0x01;
-				pkt1[15] += 0x01;
+
+				DHCPBufMode = "pktc";
+				if(pcap_sendpacket(p_send, DHCPpktcBuf, 1024) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
+					return 1;
+				}
+				sleep(2);
+				//cm mac 
+				DHCPdocsisBuf[11] += 0x01;
+				DHCPpktcBuf[11] += 0x01;
+				//vlan tag
+				DHCPdocsisBuf[15] += 0x01;
+				DHCPpktcBuf[15] += 0x01;
 				printf("\n");
+
+				DHCPBufMode = "default";
 			}
-			//memset(ChangeMode, 0, 1024);
 			DHCPtimes = 0;
 		}
-		else if(!(strcmp(buf, "send\n\0")))
+
+		/*else if(!(strcmp(buf, "pktc\n\0")))
 		{
-			int showbuf = 0;
-			printf("\n");
-			for(; showbuf < sizeof(pkt1); showbuf++)
-			{
-				printf("0x%02x,",SendBuf[showbuf] & 0xff);
+			printf("Sending PKTC buffer.............................\n");
+			if(pcap_sendpacket(p_send, DHCPpktcBuf, 1024) < 0){
+				fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
+				return 1;
 			}
 			printf("\n");
-
+		}*/
+		else if(!(strcmp(buf, "send\n\0")))
+		{
+			int showsendbuf = 0;
+			int showrecebuf = 0;
+			printf("**************Send buffer************************\n");
+			for(; showsendbuf < sizeof(DHCPdocsisBuf); showsendbuf++)
+			{
+				printf("0x%02x,",SendBuf[showsendbuf] & 0xff);
+			}
+			printf("\n");
+			printf("**************Receive buffer************************\n");
+			for(; showrecebuf < sizeof(DHCPdocsisBuf); showrecebuf++)
+			{
+				printf("0x%02x,",ReceiveBuf[showrecebuf] & 0xff);
+			}
+			printf("\n");
 		}
 		else if(!(strcmp(buf, "exit\n\0")))
 		{
@@ -534,30 +627,21 @@ void send_packet()
 
 pthread_t pthreadSendPacket;
 pthread_t pthreadReadLoop;
-//int mv = 0;
 int main()
 {
 	int pth_send = 0;
 	int pth_read = 0;
 
-
 	int s = 0;
 	int eth_ft = 0;
+
 	SendBuf = malloc(1024);
 	ReceiveBuf = malloc(1024);
-	for(s = 18; s < sizeof(pkt1); s++)
+
+	for(s = 18; s < sizeof(DHCPdocsisBuf); s++)
 	{
-		SendBuf[eth_ft++] = pkt1[s];
+		SendBuf[eth_ft++] = DHCPdocsisBuf[s];
 	}
-	
-	
-	/*printf("\n");
-	printf("Send BUf................\n");
-	for(mv = 0; mv < sizeof(pkt1); mv++)
-	{
-		printf("0x%02x,",SendBuf[mv]);
-	}
-	printf("\n");*/
 
 	pth_send = pthread_create(&pthreadSendPacket, NULL, (void*)send_packet, NULL);
 	if( pth_send != 0 )
