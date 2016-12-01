@@ -40,3 +40,7 @@
 #include <netinet/ip_icmp.h>
 #include <netinet/igmp.h>
 #include <netinet/if_ether.h>
+
+
+/*for kbhit*/
+//#include <conio.h>
