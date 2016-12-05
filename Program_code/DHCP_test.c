@@ -213,6 +213,13 @@ char DHCPpktcBuf[] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
+int StopLoopRunning = 0;
+
+void Signal_Stophandler()
+{
+	StopLoopRunning = 1;
+}
+
 //transformation mac address
 char *mac_ntoa(unsigned char *mac_d)
 {
@@ -571,15 +578,22 @@ void send_packet()
 				printf("\n");
 
 				DHCPBufMode = "default";
+				if(StopLoopRunning == 1)
+				{
+					break;
+				}
 			}
+			StopLoopRunning = 0;
 			DHCPtimes = 0;
 		}
 		else if(!(strcmp(buf, "SVGM\n\0")))
 		{
 			ChangeMode = "SVGM";
-			while(DHCPtimes < 200 || !kbhit())
+			while(DHCPtimes < 200)
 			{
-				
+				printf("StopLoop = %d\n",StopLoopRunning);
+				/*signal function*/
+			//	signal(SIGINT, Signal_Stophandler);
 				DHCPtimes++;
 				printf("Send Times --------------> %d\n", DHCPtimes);
 				DHCPBufMode = "docsis";
@@ -603,8 +617,14 @@ void send_packet()
 				DHCPpktcBuf[15] += 0x01;
 				DHCPdocsisBuf[15] += 0X01;
 				DHCPBufMode = "default";
+
+				if(StopLoopRunning == 1)
+				{
+					break;
+				}
 			}
 			DHCPtimes = 0;
+			StopLoopRunning = 0;
 		}
 
 		/*else if(!(strcmp(buf, "pktc\n\0")))
@@ -652,9 +672,13 @@ pthread_t pthreadSendPacket;
 pthread_t pthreadReadLoop;
 int main()
 {
+	/*signal function*/
+	signal(SIGINT, Signal_Stophandler);
+
 	int pth_send = 0;
 	int pth_read = 0;
-
+	
+	
 	/*store send buf in char for compare********/
 	int s = 0;
 	int eth_ft = 0;

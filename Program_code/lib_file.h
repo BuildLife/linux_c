@@ -41,6 +41,6 @@
 #include <netinet/igmp.h>
 #include <netinet/if_ether.h>
 
-
+#include <signal.h>
 /*for kbhit*/
 //#include <conio.h>
