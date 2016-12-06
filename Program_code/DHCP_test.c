@@ -3,6 +3,10 @@
 
 #define MAC_ADDRSTRLEN 2*6+5+1
 
+/*Ethernet send port and receive port*/
+char *Send_port = "eth14";
+char *Rece_port = "eth2";
+
 /*use for fpga from LAN Port to WAN Port*/
 char *SendBuf;
 char *SendpktcBuf;
@@ -238,7 +242,7 @@ int StopLoopRunning = 0;
 void Signal_Stophandler()
 {
 	StopLoopRunning = 1;
-	Menu("default");
+//	Menu("default");
 }
 
 void Menu(char *mode)
@@ -540,9 +544,7 @@ void read_loop()
 	bpf_u_int32 net,mask;
 
 	//CASTLE USEING : ubuntu 12.04
-	p_read = pcap_open_live("eth2", 65536, 1, 10, errbuf);
-	//ubuntu 16.04
-	//p_read = pcap_open_live("ens33", 65536, 1, 10, errbuf);
+	p_read = pcap_open_live(Rece_port, 65536, 1, 10, errbuf);
 	
 	if( p_read == NULL ){
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
@@ -590,9 +592,7 @@ void send_packet()
 	pcap_t *p_send;
 	
 	//CASTLE USEING : ubuntu 12.04
-	p_send = pcap_open_live("eth14", 65536, 1, 10, errbuf);
-	//ubuntu 16.04
-	//p_send = pcap_open_live("ens33", 65536, 1, 10, errbuf);
+	p_send = pcap_open_live(Send_port, 65536, 1, 10, errbuf);
 	
 	if( p_send == NULL ){
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
@@ -742,10 +742,21 @@ void send_packet()
 
 pthread_t pthreadSendPacket;
 pthread_t pthreadReadLoop;
-int main()
+int main(int argc,char *argv[])
 {
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
+
+	if(argc == 3)
+	{
+		/*Set sending packet port and receive port*/
+		Send_port = argv[1];
+		Rece_port = argv[2];
+	}
+
+	printf("Sending Port = %s\n", Send_port);
+	printf("Receive Port = %s\n", Rece_port);
+
 
 	Menu("default");
 
