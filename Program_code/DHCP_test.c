@@ -1,5 +1,68 @@
-#include "lib_file.h"
-#include "IPHeader.h"
+/*Basic lib*/
+#define _BSD_SOURCE
+#define _USE_BSD 
+#include <stdio.h>
+#include <stdlib.h>
+
+/*time lib*/
+#include <time.h>
+#include <unistd.h>
+
+/*Variable type*/
+//#include <bsd/string.h>
+#include <string.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <memory.h>
+
+/*socket include*/
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <sys/ioctl.h>
+#include <netdb.h>
+#include <errno.h>
+
+
+#include <pcap.h>
+#include <net/ethernet.h>
+#include <net/if_arp.h>
+#include <net/if.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/igmp.h>
+#include <netinet/if_ether.h>
+
+/*For Ctrl+c sending a signal liberary*/
+#include <signal.h>
+
+typedef struct S_ETH_HEADER
+{
+	unsigned char dmac[6];  // 6 Byte
+	unsigned char smac[6];  // 6 Byte
+	unsigned short type;
+	unsigned short tpid; 	// 2 Byte
+	unsigned short vid; 	// 2 Byte
+}__attribute__((__packed__)) eth_header;
+
+typedef struct S_IP_HEADER
+{
+	unsigned char ip_v:4, ip_hl:4; /*this means that each member is 4 bits*/
+	unsigned char ip_tos;
+	unsigned short ip_len; // value : 28 -> this means ip header + udp header length
+	unsigned short ip_id; //identification
+	unsigned short ip_off;
+	unsigned char ip_ttl;
+	unsigned char ip_p; //protocol -> tcp : 6 , udp : 17
+	unsigned short ip_sum;
+	unsigned int ip_src;	//4 Byte
+	unsigned int ip_dst;	//4 Byte
+}__attribute__((__packed__)) ip_header;
 
 #define MAC_ADDRSTRLEN 2*6+5+1
 
@@ -8,9 +71,9 @@ char *Send_port = "eth14";
 char *Rece_port = "eth2";
 
 /*use for fpga from LAN Port to WAN Port*/
-char *SendBuf;
-char *SendpktcBuf;
-char *ReceiveBuf;
+char *SendBuf = {0};
+char *SendpktcBuf = {0};
+char *ReceiveBuf = {0};
 
 /*Change DVGM or SVGM MODE*/
 char *ChangeMode = "default";
@@ -19,12 +82,13 @@ char *ChangeMode = "default";
 char *DHCPBufMode = "default";
 
 /*Set send times and VID Range*/
-unsigned short Ran_VID = 0;
+unsigned short Start_VID = 0;
 int Running_Times = 0;
+int KeepRunning = 0;
 
-/*Record Fail times and Success times*/
-int CompareFailTimes = 0;
-int CompareSuccessTimes = 0;
+/*Record False times and True times*/
+int CompareFalseTimes = 0;
+int CompareTrueTimes = 0;
 
 
 /*VID Range*/
@@ -34,10 +98,11 @@ unsigned short Range_vid2;
 
 
 /*2293 0x08 0x2D*/
+/*mac default 0x00 0x1c 0x7b 0x11 0x11 0x12*/
 /*DHCP Discover buffer : docsis buffer*/
 char DHCPdocsisBuf[] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
-	0x7b, 0x11, 0x11, 0x12, 0x81, 0x00, 0x08, 0x20, 0x08, 0x00, 0x45, 0x00, 
+	0x7b, 0x11, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00, 
 	0x02, 0x18, 0xde, 0xad, 0x00, 0x00, 0x80, 0x11, 
 	0x5a, 0x28, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 
 	0xff, 0xff, 0x00, 0x44, 0x00, 0x43, 0x02, 0x04, 
@@ -106,10 +171,12 @@ char DHCPdocsisBuf[] = {
 	0x03, 0x00, 0x01, 0x00, 0x1c, 0x7b, 0x11, 0x11, 
 	0x12, 0x39, 0x02, 0x05, 0xdc, 0xff };
 
+
+/*mac default : 0x00 0x1c 0x7b 0x22 0x22 0x24*/
 /*DHCP Discover buffer : pktc buffer*/
 char DHCPpktcBuf[] = {
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
-0x7b, 0x22, 0x22, 0x24, 0x81, 0x00, 0x08, 0x20, 
+0x7b, 0x22, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01, 
 0x08, 0x00, 0x45, 0x00, 0x02, 0x07, 0xde, 0xad, 
 0x00, 0x00, 0x80, 0x11, 0x5a, 0x39, 0x00, 0x00, 
 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x00, 0x44, 
@@ -253,16 +320,25 @@ void Menu(char *mode)
 		printf("1.DVGM MODE\n");
 		printf("2.SVGM MODE\n");
 		printf("3.Exit this Process\n");
-		printf("Ctrl+C --> leave the loop\n");
+		printf("Ctrl+C --> leave the sending loop\n");
 	}
 	else if(mode == "DVGM" || mode == "SVGM")
 	{
-		printf("Enter times and Range:\n");
+		printf("Enter Send Times or Enter 0 keep sending loop:\n");
 		printf("Sending Times : ");
 		scanf("%d",&Running_Times);
-	//	printf("Range_VID(ex : 2049 ~ 2055 min limit : 2049 , max limit : 2512) : \n");
-	//	scanf("%d",);
-		
+		if(Running_Times == 0)
+			KeepRunning = 1;
+		printf("Enter Start VID(limit : 2292):\n");
+		printf("VID : ");
+		scanf("%u",&Start_VID);
+		if(Start_VID != 0 && Start_VID > 2049)
+		{		
+			DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
+			DHCPdocsisBuf[15] = (Start_VID) & 0xff;
+			DHCPpktcBuf[14] = (Start_VID >> 8) & 0xff;
+			DHCPpktcBuf[15] = (Start_VID) & 0xff;
+		}
 	}
 	printf("***************************\n");
 }
@@ -476,10 +552,10 @@ void dump_ip(ip_header *ipv4)
 			
 			if(compare_num > 0)
 			{
-				CompareFailTimes += 1;
+				CompareFalseTimes += 1;
 			}
 			else
-				CompareSuccessTimes += 1;
+				CompareTrueTimes += 1;
 
 			printf("\n");
 			printf("***************** Compare Data **********************************\n");
@@ -602,14 +678,16 @@ void send_packet()
 	//while(fgets(buf, sizeof(buf), stdin) != NULL)
 	while((buf = getchar()) != NULL)
 	{
+		/******************************** DVGM **********************************/
 		//if(!(strcmp(buf, "1")))
 		if(buf == '1')
 		{
 			ChangeMode = "DVGM";
 			Menu(ChangeMode);
-			while(DHCPtimes < Running_Times)
+			while(DHCPtimes < Running_Times || KeepRunning == 1)
 			{
 				DHCPtimes++;
+
 				printf("Send Times --------------> %d\n", DHCPtimes);
 				DHCPBufMode = "docsis";
 				if(pcap_sendpacket(p_send, DHCPdocsisBuf, 1024) < 0){
@@ -622,41 +700,78 @@ void send_packet()
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
 					return 1;
 				}
-				sleep(2);
-				//cm mac 
-				DHCPdocsisBuf[11] += 0x01;
-				DHCPpktcBuf[11] += 0x01;
-				//vlan tag
-				DHCPdocsisBuf[15] += 0x01;
-				DHCPpktcBuf[15] += 0x01;
-				printf("\n");
+				sleep(1);
+				if(((DHCPdocsisBuf[10] & 0xff ) << 8 | DHCPdocsisBuf[11] & 0xff) < 2048)
+				{
+					if((DHCPpktcBuf[11] & 0xff) == 255)
+					{
+						DHCPdocsisBuf[10] += 0x01;
+						DHCPpktcBuf[10] += 0x01;
 
+						DHCPdocsisBuf[11] = 0x00;
+						DHCPpktcBuf[11] = 0x00;
+					}
+					else
+					{
+						DHCPdocsisBuf[11] += 0x01;
+						DHCPpktcBuf[11] += 0x01;
+					}
+				}
+				else
+				{
+					DHCPpktcBuf[10] = 0x00;
+					DHCPdocsisBuf[10] = 0X00;
+					DHCPpktcBuf[11] = 0x00;
+					DHCPdocsisBuf[11] = 0X00;
+				}
+				//vlan tag
+				if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
+				{
+					DHCPpktcBuf[15] += 0x01;
+					DHCPdocsisBuf[15] += 0X01;
+				}
+				else
+				{
+					DHCPpktcBuf[14] = 0x08;
+					DHCPdocsisBuf[14] = 0X08;
+					DHCPpktcBuf[15] = 0x01;
+					DHCPdocsisBuf[15] = 0X01;
+
+				}
+				printf("\n");
 				DHCPBufMode = "default";
 				if(StopLoopRunning == 1)
 				{
 					break;
 				}
 			}
+
 			printf("********************\n");
 			printf("Compare Send packet and Receive packet\n");
-			printf("Fail : %d\n",CompareFailTimes);
-			printf("Success  : %d\n",CompareSuccessTimes);
+			printf("False : %d\n",CompareFalseTimes);
+			printf("True  : %d\n",CompareTrueTimes);
 			printf("********************\n");
-			CompareFailTimes = 0;
-			CompareSuccessTimes = 0;
+			printf("\n");
 
+			/***** Init default value *****/
+			CompareFalseTimes = 0;
+			CompareTrueTimes = 0;
+			KeepRunning = 0;
 			StopLoopRunning = 0;
 			DHCPtimes = 0;
 			Menu("default");
+			/******************************/
 		}
 		//else if(!(strcmp(buf, 2)))
+		/******************************** SVGM **********************************/
 		else if(buf == '2')
 		{
 			ChangeMode = "SVGM";
 			Menu(ChangeMode);
-			while(DHCPtimes < Running_Times)
+			while(DHCPtimes < Running_Times || KeepRunning == 1)
 			{
-				DHCPtimes++;
+					DHCPtimes++;
+
 				printf("Send Times --------------> %d\n", DHCPtimes);
 				DHCPBufMode = "docsis";
 			
@@ -671,12 +786,32 @@ void send_packet()
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_send));
 					return 1;
 				}
-				sleep(2);
-				//cm mac 
-		//		DHCPpktcBuf[11] += 0x01;
-		//		DHCPdocsisBuf[11] += 0x01;
+				sleep(1);
+				//cm mac
+				if(((DHCPdocsisBuf[10] & 0xff ) << 8 | DHCPdocsisBuf[11] & 0xff) < 2048)
+				{
+					if((DHCPpktcBuf[11] & 0xff) == 255)
+					{
+						DHCPdocsisBuf[10] += 0x01;
+						DHCPpktcBuf[10] += 0x01;
+						DHCPdocsisBuf[11] = 0x00;
+						DHCPpktcBuf[11] = 0x00;
+					}
+					else
+					{
+						DHCPdocsisBuf[11] += 0x01;
+						DHCPpktcBuf[11] += 0x01;
+						}
+				}
+				else
+				{
+					DHCPpktcBuf[10] = 0x00;
+					DHCPdocsisBuf[10] = 0X00;
+					DHCPpktcBuf[11] = 0x00;
+					DHCPdocsisBuf[11] = 0X00;
+				}
 				//vlan tag
-				if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2290)
+				if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
 				{
 					DHCPpktcBuf[15] += 0x01;
 					DHCPdocsisBuf[15] += 0X01;
@@ -690,41 +825,30 @@ void send_packet()
 
 				}
 				DHCPBufMode = "default";
+				printf("\n");
 
 				if(StopLoopRunning == 1)
 				{
 					break;
 				}
 			}
+
 			printf("********************\n");
 			printf("Compare Send packet and Receive packet\n");
-			printf("Fail : %d\n",CompareFailTimes);
-			printf("Success  : %d\n",CompareSuccessTimes);
+			printf("False : %d\n",CompareFalseTimes);
+			printf("True  : %d\n",CompareTrueTimes);
 			printf("********************\n");
-			CompareFailTimes = 0;
-			CompareSuccessTimes = 0;
+			printf("\n");
+
+			/***** Init default value *****/
+			CompareFalseTimes = 0;
+			CompareTrueTimes = 0;
+			KeepRunning = 0;
 			DHCPtimes = 0;
 			StopLoopRunning = 0;
 			Menu("default");
+			/******************************/
 		}
-		/*else if(!(strcmp(buf, "send\n\0")))
-		{
-			int showsendbuf = 0;
-			int showrecebuf = 0;
-			printf("**************Send buffer************************\n");
-			for(; showsendbuf < sizeof(DHCPdocsisBuf); showsendbuf++)
-			{
-				printf("0x%02x,",SendBuf[showsendbuf] & 0xff);
-			}
-			printf("\n");
-			printf("**************Receive buffer************************\n");
-			for(; showrecebuf < sizeof(DHCPdocsisBuf); showrecebuf++)
-			{
-				printf("0x%02x,",ReceiveBuf[showrecebuf] & 0xff);
-			}
-			printf("\n");
-		}*/
-		//else if(!(strcmp(buf, "exit\n\0")))
 		else if(buf == '3')
 		{
 			free(SendBuf);
@@ -733,8 +857,6 @@ void send_packet()
 			pcap_close(p_send);
 			exit(1);
 		}
-	//	else
-		//	printf("Enter Error\n");
 	}
 	pcap_close(p_send);
 }
@@ -754,8 +876,8 @@ int main(int argc,char *argv[])
 		Rece_port = argv[2];
 	}
 
-	printf("Sending Port = %s\n", Send_port);
-	printf("Receive Port = %s\n", Rece_port);
+	printf("LAN Port = %s\n", Send_port);
+	printf("WAN Port = %s\n", Rece_port);
 
 
 	Menu("default");
@@ -805,6 +927,7 @@ int main(int argc,char *argv[])
 	pthread_join(pthreadReadLoop, NULL);
 
 	free(SendBuf);
+	free(SendpktcBuf);
 	free(ReceiveBuf);
 	return 0;
 }
