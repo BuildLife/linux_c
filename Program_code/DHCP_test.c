@@ -40,6 +40,7 @@
 
 /*For Ctrl+c sending a signal liberary*/
 #include <signal.h>
+#include <sys/wait.h>
 #include <time.h>
 
 typedef struct S_ETH_HEADER
@@ -98,7 +99,8 @@ int Random_send = 0;
 
 
 /*Pthread lock*/
-//pthread_mutex_t pcap_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pcap_read_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 /*2293 0x08 0x2D*/
@@ -313,13 +315,13 @@ char DHCPpktcBuf[] = {
 /*DHCP docsis offer packet*/
 /*CM IP : 192.168.10.32*/
 char DHCPdocsisBuf_offer[] = {
-0x00, 0x1c, 0x7b, 0x11, 0x00, 0x00, 0xc4, 0x12, 
+0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc4, 0x12, 
 0xf5, 0x30, 0x92, 0xf9, 0x08, 0x00, 0x45, 0x10, 
 0x01, 0x7b, 0x00, 0x00, 0x00, 0x00, 0x80, 0x11, 
 0xa3, 0xef, 0xc0, 0xa8, 0x0a, 0x02, 0xc0, 0xa8, 
 0x0a, 0x20, 0x00, 0x43, 0x00, 0x44, 0x01, 0x67, 
-0x33, 0x7d, 0x02, 0x01, 0x06, 0x00, 0x6c, 0xbc, 
-0x59, 0xa4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x33, 0x7d, 0x02, 0x01, 0x06, 0x00, 0x29, 0xd9, 
+0xaa, 0x6c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x20, 0xc0, 0xa8, 
 0x0a, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c, 
 0x7b, 0x11, 0x11, 0x12, 0x00, 0x00, 0x00, 0x00, 
@@ -368,13 +370,13 @@ char DHCPdocsisBuf_offer[] = {
 /*DHCP pktc offer packet*/
 /*EMTA IP : 192.168.10.132*/
 char DHCPpktcBuf_offer[] = {
-0x00, 0x1c, 0x7b, 0x22, 0x00, 0x00, 0xc4, 0x12, 
+0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc4, 0x12, 
 0xf5, 0x30, 0x92, 0xf9, 0x08, 0x00, 0x45, 0x10, 
 0x01, 0x85, 0x00, 0x00, 0x00, 0x00, 0x80, 0x11, 
 0xa3, 0x81, 0xc0, 0xa8, 0x0a, 0x02, 0xc0, 0xa8, 
 0x0a, 0x84, 0x00, 0x43, 0x00, 0x44, 0x01, 0x71, 
-0x0a, 0x8a, 0x02, 0x01, 0x06, 0x00, 0x6c, 0xbc, 
-0x59, 0xa5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x0a, 0x8a, 0x02, 0x01, 0x06, 0x00, 0x4f, 0x8a, 
+0xe6, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x84, 0xc0, 0xa8, 
 0x0a, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c, 
 0x7b, 0x22, 0x22, 0x23, 0x00, 0x00, 0x00, 0x00, 
@@ -516,7 +518,7 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	/****************************************************************************************/
 	
 		printf("------------------------------- SVGM Mode ---------------------------------------\n");
-		printf("---------------- LAN Port ---------------- | ------------- WAN Port -------------\n");
+		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
 		printf("---------------- %s ---------------- | --------------- %s --------------\n",LAN_port,WAN_port);
 	if(DHCPBufMode == "docsis")
 	{
@@ -740,6 +742,10 @@ void read_loop()
 	//CASTLE USEING : ubuntu 12.04
 	p_read = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
 
+	/*read lan port*/
+	//pcap_t *p_read_lan;
+	//p_read_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
+
 	if( p_read == NULL ){
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
 		return 1;
@@ -780,22 +786,22 @@ void MACandVIDplus()
 			DHCPdocsisBuf[10] += 0x01;
 			DHCPpktcBuf[10] += 0x01;
 
-//			DHCPpktcBuf_offer[4] = DHCPpktcBuf[10];
-//			DHCPdocsisBuf_offer[4] = DHCPdocsisBuf[10];
+		//	DHCPpktcBuf_offer[4] = DHCPpktcBuf[10];
+		//	DHCPdocsisBuf_offer[4] = DHCPdocsisBuf[10];
 
 			DHCPdocsisBuf[11] = 0x00;
 			DHCPpktcBuf[11] = 0x00;
 
-//			DHCPpktcBuf_offer[5] = DHCPpktcBuf[11];
-//			DHCPdocsisBuf_offer[5] = DHCPdocsisBuf[11];
+		//	DHCPpktcBuf_offer[5] = DHCPpktcBuf[11];
+		//	DHCPdocsisBuf_offer[5] = DHCPdocsisBuf[11];
 		}
 		else
 		{
+		//	DHCPpktcBuf_offer[5] = DHCPpktcBuf[11];
+		//	DHCPdocsisBuf_offer[5] = DHCPdocsisBuf[11];
+			
 			DHCPdocsisBuf[11] += 0x01;
 			DHCPpktcBuf[11] += 0x01;
-
-//			DHCPpktcBuf_offer[5] = DHCPpktcBuf[11];
-//			DHCPdocsisBuf_offer[5] = DHCPdocsisBuf[11];
 		}
 	}
 	else
@@ -806,10 +812,10 @@ void MACandVIDplus()
 		DHCPdocsisBuf[11] = 0X00;
 
 
-//		DHCPpktcBuf_offer[4] = 0x00;
-//		DHCPdocsisBuf_offer[4] = 0X00;
-//		DHCPpktcBuf_offer[5] = 0x00;
-//		DHCPdocsisBuf_offer[5] = 0X00;
+	//	DHCPpktcBuf_offer[4] = 0x00;
+	//	DHCPdocsisBuf_offer[4] = 0X00;
+	//	DHCPpktcBuf_offer[5] = 0x00;
+	//	DHCPdocsisBuf_offer[5] = 0X00;
 		
 	}
 
@@ -829,8 +835,13 @@ void MACandVIDplus()
 }
 
 
-void Option_Receive(int D_times, char sop, pcap_t *p_lan)
+void Option_Receive(int D_times, char sop, pcap_t *p_lan, pcap_t *p_wan)
 {
+		/*Set send time interval */
+		struct timespec send_ts;
+		send_ts.tv_sec = 1;
+		send_ts.tv_nsec = 0;
+
 		if(sop == '1')
 			ChangeMode = "DVGM";
 		else if(sop == '2')
@@ -847,32 +858,45 @@ void Option_Receive(int D_times, char sop, pcap_t *p_lan)
 			if(Random_send >= 1 && Random_send < 50)
 			{
 				DHCPBufMode = "docsis";
-				if(pcap_sendpacket(p_lan, DHCPdocsisBuf, 1024) < 0){
+
+				pthread_mutex_lock(&pcap_send_mutex);
+
+				if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return 1;
+				}
+				nanosleep(&send_ts,NULL);
+
+				if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, sizeof(DHCPdocsisBuf_offer)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
+					pthread_mutex_unlock(&pcap_send_mutex);
 					return 1;
 				}
 
-		//		sleep(1);
-
-				//if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, 1024) < 0){
-				//	fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
-			//		return 1;
-			//	}
+				pthread_mutex_unlock(&pcap_send_mutex);
 			}
 			else if(Random_send >= 50 && Random_send <= 100)
 			{
 				DHCPBufMode = "pktc";
-				if(pcap_sendpacket(p_lan, DHCPpktcBuf, 1024) < 0){
+
+				pthread_mutex_lock(&pcap_send_mutex);
+
+				if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
 					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+					pthread_mutex_unlock(&pcap_send_mutex);
 					return 1;
 				}
 
-		//		sleep(1);
+				nanosleep(&send_ts,NULL);
 
-			//	if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, 1024) < 0){
-			//		fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
-			//		return 1;
-			//	}
+				if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, sizeof(DHCPpktcBuf_offer)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return 1;
+				}
+
+				pthread_mutex_unlock(&pcap_send_mutex);
 			}
 			sleep(1);
 
@@ -931,9 +955,9 @@ void send_packet()
 	}
 
 	/*WAN port pacp send*/
-	//pcap_t *p_wan_send;
+	pcap_t *p_wan_send;
 
-	//p_wan_send = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
+	p_wan_send = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
 
 	//while(fgets(buf, sizeof(buf), stdin) != NULL)
 	while((buf = getchar()) != NULL)
@@ -942,7 +966,7 @@ void send_packet()
 		//if(!(strcmp(buf, "1")))
 		if(buf == '1' || buf == '2')
 		{
-			Option_Receive(DHCPtimes, buf, p_send);
+			Option_Receive(DHCPtimes, buf, p_send, p_wan_send);
 		}
 		else if(buf == '3')
 		{
@@ -950,7 +974,7 @@ void send_packet()
 			free(ReceiveBuf);
 			free(SendpktcBuf);
 			pcap_close(p_send);
-			exit(1);
+			exit(0);
 		}
 	//	else
 	//	{
@@ -958,8 +982,43 @@ void send_packet()
 	//		Menu("default");
 	//	}
 	}
+
+	pcap_close(p_wan_send);
 	pcap_close(p_send);
+	
 }
+
+
+/*check process*/
+void process_status()
+{
+	int status;
+	pid_t pid;
+
+	if(!fork())
+		return 1;
+
+	pid = wait(&status);
+
+	if(pid == -1)
+		perror("wait");
+
+	printf("pid = %d\n",pid);
+
+	if(WIFEXITED(status))
+		printf("Normal termination with exit status = %d\n", WEXITSTATUS(status));
+	
+
+	if(WIFSIGNALED(status))
+		printf("killed by signal = %d%s\n", WTERMSIG(status), WCOREDUMP(status) ? "(dumped core)": "");
+
+	if(WIFSTOPPED(status))
+		printf("Stopped by signal = %d\n",WSTOPSIG(status));
+
+	if(WIFCONTINUED(status))
+		printf("Continued\n");
+}
+
 
 
 /*Send Packet thread*/
@@ -968,8 +1027,14 @@ pthread_t pthreadSendPacket;
 /*Receive Packet thread*/
 pthread_t pthreadReadLoop;
 
+
+/*check process work status*/
+pthread_t pthreadProcessStatus;
+
 int main(int argc,char *argv[])
 {
+	//printf("My pid = %jd\n",(intmax_t) getpid());
+
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
 
@@ -1004,6 +1069,7 @@ int main(int argc,char *argv[])
 	/*******************************************/
 
 	int pth_send = 0, pth_read = 0;
+	int pth_status = 0;
 
 	pth_send = pthread_create(&pthreadSendPacket, NULL, (void*)send_packet, NULL);
 	if( pth_send != 0 )
@@ -1021,8 +1087,18 @@ int main(int argc,char *argv[])
 		exit(1);
 	}
 
+	/*Process status test*/
+	pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
+	if( pth_status != 0 )
+	{
+		printf("Create Status Function Thread Error\n");
+		printf("exit........................\n");
+		exit(1);
+	}
+
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
+	pthread_join(pthreadProcessStatus, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);
