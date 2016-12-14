@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 /*Variable type*/
-//#include <bsd/string.h>
 #include <string.h>
 #include <sys/types.h>
 #include <stdint.h>
@@ -100,7 +99,6 @@ int LosePacket = 0;
 
 /*Random Sending data*/
 int Random_send = 0;
-
 
 
 /*Pthread lock*/
@@ -369,9 +367,19 @@ char DHCPpktcBuf_offer[] = {
 
 int StopLoopRunning = 0;
 
+
+/*Ctrl+c change the values for stop read/send while*/
 void Signal_Stophandler()
 {
 	StopLoopRunning = 1;
+}
+
+/*For test signal alarm*/
+void SignalAlarmProcessStatus(int signo)
+{
+	alarm(10);
+	printf("set alarm status for check\n");
+	//signal(SIGALRM,SignalAlarmProcessStatus);
 }
 
 void Menu(char *mode)
@@ -606,10 +614,6 @@ void dump_ip(ip_header *ipv4, int length)
 					if(SendBuf[i] != ReceiveBuf[i])
 					{
 						compare_num += 1;
-						printf("Problem buffer----------------------%d\n",i);
-						printf("send -> 0x%02x,",SendBuf[x]&0xff);
-						printf("recv -> 0x%02x,",ReceiveBuf[x]&0xff);
-						printf("\n");
 					}
 				}
 			}
@@ -620,10 +624,6 @@ void dump_ip(ip_header *ipv4, int length)
 					if(SendpktcBuf[x] != ReceiveBuf[x])
 					{
 						compare_num += 1;
-						printf("Problem buffer----------------------%d\n",x);
-						printf("send -> 0x%02x,",SendpktcBuf[x]&0xff);
-						printf("rece -> 0x%02x,",ReceiveBuf[x]&0xff);
-						printf("\n");
 					}
 				}
 			}
@@ -653,13 +653,6 @@ void dump_ip(ip_header *ipv4, int length)
 		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
 		{
 			ReceiveBuf_offer = (char*)ipv4;
-			/*int x = 0;
-			for(;x<sizeof(DHCPdocsisBuf_offer);x++)
-			{
-				printf("0x%02x",ReceiveBuf_offer[x]);
-			}
-			printf("\n");
-*/
 			if(DHCPBufMode == "docsis")
 			{
 				for(;i_offer<length;i_offer++)
@@ -696,10 +689,10 @@ void dump_ip(ip_header *ipv4, int length)
 			/*Clear ReceiveBuf to zero*/
 			memset(ReceiveBuf_offer,0,length);
 			/*for test*/
-			if((!compare_offer) == 0)
+			/*if((!compare_offer) == 0)
 			{
 				StopLoopRunning = 1;
-			}
+			}*/
 		}
 
 }
@@ -1161,8 +1154,11 @@ void send_packet()
 
 
 /*check process*/
-/*void process_status()
+void process_status()
 {
+	//test for check process status
+	signal(SIGALRM,SignalAlarmProcessStatus);
+
 	int status;
 	pid_t pid;
 
@@ -1189,7 +1185,7 @@ void send_packet()
 	if(WIFCONTINUED(status))
 		printf("Continued\n");
 }
-*/
+
 
 
 /*Send Packet thread*/
@@ -1202,11 +1198,10 @@ pthread_t pthreadReadLoop;
 pthread_t pthreadReadLoopLAN;
 
 /*check process work status*/
-//pthread_t pthreadProcessStatus;
+pthread_t pthreadProcessStatus;
 
 int main(int argc,char *argv[])
 {
-	//printf("My pid = %jd\n",(intmax_t) getpid());
 
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
@@ -1259,14 +1254,6 @@ int main(int argc,char *argv[])
 	}
 	/*******************************************/
 
-	//for debug
-	/*int off = 0;
-	for(; off < sizeof(DHCPdocsisBuf_offer); off++)
-	{
-		printf("0x%02x,",SendBuf_offer[off]);
-	}
-	printf("\n");
-*/
 	int pth_send = 0, pth_read = 0, pth_read_lan = 0;
 	int pth_status = 0;
 
@@ -1295,18 +1282,18 @@ int main(int argc,char *argv[])
 	}
 
 	/*Process status test*/
-/*	pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
+	pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
 	if( pth_status != 0 )
 	{
 		printf("Create Status Function Thread Error\n");
 		printf("exit........................\n");
 		exit(1);
 	}
-*/
+
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
-//	pthread_join(pthreadProcessStatus, NULL);
+	pthread_join(pthreadProcessStatus, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);
