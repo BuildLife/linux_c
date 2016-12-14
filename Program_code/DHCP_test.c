@@ -77,6 +77,10 @@ char *SendBuf = {0};
 char *SendpktcBuf = {0};
 char *ReceiveBuf = {0};
 
+char *SendBuf_offer = {0};
+char *SendpktcBuf_offer = {0};
+char *ReceiveBuf_offer = {0};
+
 /*Change DVGM or SVGM MODE*/
 char *ChangeMode = "default";
 
@@ -89,6 +93,7 @@ int Running_Times = 0, KeepRunning = 0;
 
 /*Record Compare data False times and True times*/
 int CompareFalseTimes = 0, CompareTrueTimes = 0;
+int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 
 /*Record send lose packet*/
 int LosePacket = 0;
@@ -248,68 +253,7 @@ char DHCPpktcBuf[] = {
 0x54, 0xb6, 0x5c, 0x3d, 0x0f, 0xff, 0x7b, 0x22, 
 0x22, 0x23, 0x00, 0x03, 0x00, 0x01, 0x00, 0x1c, 
 0x7b, 0x22, 0x22, 0x23, 0x39, 0x02, 0x05, 0xdc, 
-0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x40, 0x83, 0x49, 0x25, 0xba, 0x7f, 0x00, 0x00, 
-0x80, 0x81, 0x49, 0x25, 0xba, 0x7f, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x30, 0x30, 0x3a, 0x31, 0x63, 0x3a, 0x37, 0x62, 
-0x3a, 0x31, 0x31, 0x3a, 0x31, 0x31, 0x3a, 0x31, 
-0x33, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0xe7, 0x8d, 0x24, 0xba, 0x7f, 0x00, 0x00, 
-0x00, 0xf7, 0x0d, 0x25, 0xba, 0x7f, 0x00, 0x00, 
-0x54, 0x00, 0x8c, 0x1f, 0xba, 0x7f, 0x00, 0x00, 
-0x20, 0x0d, 0x01, 0x18, 0xba, 0x7f, 0x00, 0x00, 
-0x30, 0xc8, 0xfd, 0x01, 0x00, 0x00, 0x00, 0x00, 
-0x10, 0xc0, 0xfd, 0x01, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
+0xff };
 
 
 /*DHCP docsis offer packet*/
@@ -551,7 +495,7 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		
 	}
 		/*Send buffer to ip structure*/
-		dump_ip((ip_header*)(content + sizeof(eth_header)));
+		dump_ip((ip_header*)(content + sizeof(eth_header)),length - sizeof(eth_header));
 }
 
 
@@ -602,7 +546,7 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 
 	
 		printf("------------------------------- DVGM Mode ---------------------------------------\n");
-		printf("---------------- LAN Port ---------------- | ------------- WAN Port -------------\n");
+		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
 		printf("---------------- %s ---------------- | ------------ %s ------------\n",LAN_port,WAN_port);
 	if(DHCPBufMode == "docsis")
 	{
@@ -636,36 +580,50 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	}
 		
 	/*Send buffer to ip structure*/
-	dump_ip((ip_header*)(content + sizeof(eth_header) - 4));
+	dump_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
 }
 
 
-void dump_ip(ip_header *ipv4)
+void dump_ip(ip_header *ipv4, int length)
 {
+		/*for discover buffer*/
 		int compare_num = 0;
 		int i = 0;
 		int x = 0;
+
+		/*for offer buffer*/
+		int compare_offer = 0;
+		int i_offer = 0;
+		int x_offer = 0;
 		if(htons(ipv4 -> ip_id) == 0xdead)
 		{
 			ReceiveBuf = (char*)ipv4;
 
 			if(DHCPBufMode == "docsis")
 			{
-				for(;i<sizeof(DHCPdocsisBuf);i++)
+				for(;i<length;i++)
 				{
 					if(SendBuf[i] != ReceiveBuf[i])
 					{
 						compare_num += 1;
+						printf("Problem buffer----------------------%d\n",i);
+						printf("send -> 0x%02x,",SendBuf[x]&0xff);
+						printf("recv -> 0x%02x,",ReceiveBuf[x]&0xff);
+						printf("\n");
 					}
 				}
 			}
 			else if(DHCPBufMode == "pktc")
 			{
-				for(;x<sizeof(DHCPpktcBuf);x++)
+				for(;x<length;x++)
 				{
 					if(SendpktcBuf[x] != ReceiveBuf[x])
 					{
 						compare_num += 1;
+						printf("Problem buffer----------------------%d\n",x);
+						printf("send -> 0x%02x,",SendpktcBuf[x]&0xff);
+						printf("rece -> 0x%02x,",ReceiveBuf[x]&0xff);
+						printf("\n");
 					}
 				}
 			}
@@ -683,8 +641,67 @@ void dump_ip(ip_header *ipv4)
 			printf("*****************************************************************\n");
 			
 			/*Clear ReceiveBuf to zero*/
-			memset(ReceiveBuf,0,1024);
+			memset(ReceiveBuf,0,length);
+			
+			/*for test*/
+			if((!compare_num) == 0)
+			{
+				StopLoopRunning = 1;
+			}
+
 		}
+		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
+		{
+			ReceiveBuf_offer = (char*)ipv4;
+			/*int x = 0;
+			for(;x<sizeof(DHCPdocsisBuf_offer);x++)
+			{
+				printf("0x%02x",ReceiveBuf_offer[x]);
+			}
+			printf("\n");
+*/
+			if(DHCPBufMode == "docsis")
+			{
+				for(;i_offer<length;i_offer++)
+				{
+					if(SendBuf_offer[i_offer] != ReceiveBuf_offer[i_offer])
+					{
+						compare_offer += 1;
+					}
+				}
+			}
+			else if(DHCPBufMode == "pktc")
+			{
+				for(;x_offer<length;x_offer++)
+				{
+					if(SendpktcBuf_offer[x_offer] != ReceiveBuf_offer[x_offer])
+					{
+						compare_offer += 1;
+					}
+				}
+			}
+			
+			if(compare_offer > 0)
+			{
+				CompareFalseTimes_offer += 1;
+			}
+			else
+				CompareTrueTimes_offer += 1;
+
+			printf("\n");
+			printf("***************** Compare Data **********************************\n");
+			printf(" '%s offer' Compare data --------> %s\n", DHCPBufMode,!compare_offer ? "true" : "false");
+			printf("*****************************************************************\n");
+			
+			/*Clear ReceiveBuf to zero*/
+			memset(ReceiveBuf_offer,0,length);
+			/*for test*/
+			if((!compare_offer) == 0)
+			{
+				StopLoopRunning = 1;
+			}
+		}
+
 }
 
 
@@ -709,6 +726,8 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 		return;
 	}
 
+		
+	/*Send buffer to ip structure*/
 	if(ChangeMode == "DVGM")
 	{
 		unsigned short DVGM_checksum = (bytes[18] << 8) | bytes[19];
@@ -728,8 +747,117 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
 		}
 	}
-
+	//pthread_mutex_unlock(&pcap_read_mutex);
 }
+
+
+/*LAN Port read Function*/
+void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
+{
+	unsigned short checksum_offer = (bytes[24] << 8) | bytes[25];
+	/*For LAN docsis buffer*/
+	eth_header *WAN_docsis_ethhdr_offer = (eth_header*)DHCPdocsisBuf_offer;
+
+	/*For LAN pktc buffer*/
+	eth_header *WAN_pktc_ethhdr_offer = (eth_header*)DHCPpktcBuf_offer;
+
+
+	//check buffer length have enough normal ethernet buffer
+	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header)){
+		return;
+	}
+
+	char timebuf[64];
+	memset(timebuf, 0, sizeof(timebuf));
+	if( ctime_r(&header -> ts.tv_sec, timebuf) == NULL)
+	{
+		return;
+	}
+
+	/********************************* For LAN buffer ***************************************/
+	char WAN_docsis_dstmac_offer[MAC_ADDRSTRLEN] = {}, WAN_docsis_srcmac_offer[MAC_ADDRSTRLEN] = {};
+	char WAN_pktc_dstmac_offer[MAC_ADDRSTRLEN] = {}, WAN_pktc_srcmac_offer[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t WAN_docsis_type;
+	u_int16_t WAN_pktc_type;
+
+	//LAN : set mac 
+	strlcpy(WAN_docsis_dstmac_offer, mac_ntoa(WAN_docsis_ethhdr_offer -> dmac), sizeof(WAN_docsis_dstmac_offer));
+	strlcpy(WAN_docsis_srcmac_offer, mac_ntoa(WAN_docsis_ethhdr_offer -> smac), sizeof(WAN_docsis_srcmac_offer));
+	strlcpy(WAN_pktc_dstmac_offer, mac_ntoa(WAN_pktc_ethhdr_offer -> dmac), sizeof(WAN_pktc_dstmac_offer));
+	strlcpy(WAN_pktc_srcmac_offer, mac_ntoa(WAN_pktc_ethhdr_offer -> smac), sizeof(WAN_pktc_srcmac_offer));
+
+	//LAN : Ethernet type
+	WAN_docsis_type = ntohs(WAN_docsis_ethhdr_offer -> type);
+	WAN_pktc_type = ntohs(WAN_pktc_ethhdr_offer -> type);
+
+	/****************************************************************************************/
+
+	/********************************* For WAN buffer ***************************************/
+	eth_header *LAN_ethhdr_offer = (eth_header*)bytes;
+
+	//WAN : set & get source mac and destination mac
+	char LAN_dstmac_offer[MAC_ADDRSTRLEN] = {}, LAN_srcmac_offer[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t LAN_type;
+
+	//WAN : set mac 
+	strlcpy(LAN_dstmac_offer, mac_ntoa(LAN_ethhdr_offer -> dmac), sizeof(LAN_dstmac_offer));
+	strlcpy(LAN_srcmac_offer, mac_ntoa(LAN_ethhdr_offer -> smac), sizeof(LAN_srcmac_offer));
+	//WAN : Ethernet type
+	LAN_type = ntohs(LAN_ethhdr_offer -> type);
+
+	/****************************************************************************************/
+
+	char docsis_src[64], docsis_dst[64];
+	char pktc_src[64], pktc_dst[64];
+
+	ip_header *ip_docsis = (ip_header*)(bytes + sizeof(eth_header) - 4 );
+	ip_header *ip_pktc = (ip_header*)(bytes + sizeof(eth_header) - 4 );
+
+	/*offer docsis ip address*/
+	inet_ntop(AF_INET, &ip_docsis -> ip_dst, docsis_dst, sizeof(docsis_dst));
+	inet_ntop(AF_INET, &ip_docsis -> ip_src, docsis_src, sizeof(docsis_src));
+	
+	/*offer pkc ip address*/
+	inet_ntop(AF_INET, &ip_pktc -> ip_dst, pktc_dst, sizeof(pktc_dst));
+	inet_ntop(AF_INET, &ip_pktc -> ip_src, pktc_src, sizeof(pktc_src));
+
+	if(checksum_offer == 0xa381 || checksum_offer == 0xa3ef)
+	{
+		printf("Current Send Times : %s",timebuf);
+		printf("------------------------------- DHCP OFFER --------------------------------------\n");
+		printf("---------------- LAN Port <================ | ============ WAN Port -------------\n");
+		printf("---------------- %s ---------------- | ------------ %s ------------\n",LAN_port,WAN_port);
+		if(DHCPBufMode == "docsis")
+		{
+			printf("------------------------------- DOCSIS OFFER --------------------------------------\n");
+			printf("Destination 	: %17s        |   %17s\n",WAN_docsis_dstmac_offer, LAN_dstmac_offer);
+	
+			printf("Source      	: %17s        |   %17s\n",WAN_docsis_srcmac_offer, LAN_srcmac_offer);
+			
+			printf("Destination IP  : %s            |   %u.%u.%u.%u\n",docsis_dst, DHCPdocsisBuf_offer[30] & 0xff, DHCPdocsisBuf_offer[31] & 0xff, DHCPdocsisBuf_offer[32] & 0xff,DHCPdocsisBuf_offer[33] & 0xff);
+			printf("Source IP       : %s             |   %u.%u.%u.%u\n",docsis_src, DHCPdocsisBuf_offer[26] & 0xff, DHCPdocsisBuf_offer[27] & 0xff, DHCPdocsisBuf_offer[28] & 0xff,DHCPdocsisBuf_offer[29] & 0xff);
+			printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",WAN_docsis_type,LAN_type);
+		
+		}
+		else if(DHCPBufMode == "pktc")
+		{
+			printf("------------------------------- PKTC OFFER --------------------------------------\n");
+			printf("Destination 	: %17s        |   %17s\n",WAN_pktc_dstmac_offer, LAN_dstmac_offer);
+	
+			printf("Source      	: %17s        |   %17s\n",WAN_pktc_srcmac_offer, LAN_srcmac_offer);
+			printf("Destination IP  : %s           |   %u.%u.%u.%u\n",pktc_dst, DHCPpktcBuf_offer[30] & 0xff, DHCPpktcBuf_offer[31] & 0xff, DHCPpktcBuf_offer[32] & 0xff,DHCPpktcBuf_offer[33] & 0xff);
+			printf("Source IP       : %s             |   %u.%u.%u.%u\n",pktc_src, DHCPpktcBuf_offer[26] & 0xff, DHCPpktcBuf_offer[27] & 0xff, DHCPpktcBuf_offer[28] & 0xff,DHCPpktcBuf_offer[29] & 0xff);
+	
+			printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",WAN_pktc_type,LAN_type);
+		
+		}
+
+		dump_ip((ip_header*)(bytes + sizeof(eth_header) - 4), header -> caplen - sizeof(eth_header) - 4);
+	}	
+}
+
 
 void read_loop()
 {
@@ -741,10 +869,6 @@ void read_loop()
 
 	//CASTLE USEING : ubuntu 12.04
 	p_read = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
-
-	/*read lan port*/
-	//pcap_t *p_read_lan;
-	//p_read_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
 
 	if( p_read == NULL ){
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
@@ -771,9 +895,51 @@ void read_loop()
 		pcap_close(p_read);
 		exit(1);
 	}
-
+	
 	pcap_close(p_read);
 }
+
+void read_loop_lan()
+{
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t *p_read;
+
+	struct bpf_program bpf_p;
+	bpf_u_int32 net,mask;
+
+	//read lan port
+	pcap_t *p_read_lan;
+	p_read_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
+
+	if( p_read_lan == NULL ){
+		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
+		return 1;
+	}
+
+	if( pcap_compile(p_read_lan, &bpf_p, "udp", 1, mask) == -1){
+		fprintf(stderr, "pcap_comiple:%s\n", pcap_geterr(p_read_lan));
+		pcap_close(p_read_lan);
+		exit(1);
+	}
+
+	if( pcap_setfilter(p_read_lan, &bpf_p) == -1){
+
+		fprintf(stderr, "pcap_setfilter:%s\n", pcap_geterr(p_read_lan));
+		pcap_close(p_read_lan);
+		exit(1);
+	}
+
+	pcap_freecode(&bpf_p);
+
+	if (pcap_loop(p_read_lan, -1, pcap_handler_func_lan, NULL) < 0){
+		fprintf(stderr, "pcap_read:%s\n", pcap_geterr(p_read_lan));
+		pcap_close(p_read_lan);
+		exit(1);
+	}
+
+	pcap_close(p_read_lan);
+}
+
 
 
 void MACandVIDplus()
@@ -912,18 +1078,28 @@ void Option_Receive(int D_times, char sop, pcap_t *p_lan, pcap_t *p_wan)
 			}
 		}
 
-		printf("********************\n");
-		printf("Compare Send packet and Receive packet\n");
+		printf("**************************************************\n");
+		printf("--------LAN ------------------------>  WAN--------\n");
+		printf("Discover -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n",CompareFalseTimes);
 		printf("True  : %d\n",CompareTrueTimes);
-		printf("Not arrive receive Port packet\n");
+		printf("Discover -> Not arrive receive Port packet\n");
 		printf("Lose Packet : %d\n",D_times - (CompareFalseTimes + CompareTrueTimes));
-		printf("********************\n");
+		printf("\n");
+		printf("--------LAN <------------------------  WAN--------\n");
+		printf("OFFER -> Compare Send packet and Receive packet\n");
+		printf("False : %d\n",CompareFalseTimes_offer);
+		printf("True  : %d\n",CompareTrueTimes_offer);
+		printf("OFFER -> Not arrive receive Port packet\n");
+		printf("Lose Packet : %d\n",D_times - (CompareFalseTimes_offer + CompareTrueTimes_offer));
+		printf("***************************************************\n");
 		printf("\n");
 
 		/***** Init default value *****/
 		CompareFalseTimes = 0;
 		CompareTrueTimes = 0;
+		CompareFalseTimes_offer = 0;
+		CompareTrueTimes_offer = 0;
 		LosePacket = 0;
 		KeepRunning = 0;
 		StopLoopRunning = 0;
@@ -959,11 +1135,8 @@ void send_packet()
 
 	p_wan_send = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
 
-	//while(fgets(buf, sizeof(buf), stdin) != NULL)
 	while((buf = getchar()) != NULL)
 	{
-		/******************************** DVGM **********************************/
-		//if(!(strcmp(buf, "1")))
 		if(buf == '1' || buf == '2')
 		{
 			Option_Receive(DHCPtimes, buf, p_send, p_wan_send);
@@ -973,14 +1146,12 @@ void send_packet()
 			free(SendBuf);
 			free(ReceiveBuf);
 			free(SendpktcBuf);
+			free(SendBuf_offer);
+			free(ReceiveBuf_offer);
+			free(SendpktcBuf_offer);
 			pcap_close(p_send);
 			exit(0);
 		}
-	//	else
-	//	{
-			//printf("No this option\n");
-	//		Menu("default");
-	//	}
 	}
 
 	pcap_close(p_wan_send);
@@ -990,7 +1161,7 @@ void send_packet()
 
 
 /*check process*/
-void process_status()
+/*void process_status()
 {
 	int status;
 	pid_t pid;
@@ -1018,7 +1189,7 @@ void process_status()
 	if(WIFCONTINUED(status))
 		printf("Continued\n");
 }
-
+*/
 
 
 /*Send Packet thread*/
@@ -1027,9 +1198,11 @@ pthread_t pthreadSendPacket;
 /*Receive Packet thread*/
 pthread_t pthreadReadLoop;
 
+/*Receive another lan port thread*/
+pthread_t pthreadReadLoopLAN;
 
 /*check process work status*/
-pthread_t pthreadProcessStatus;
+//pthread_t pthreadProcessStatus;
 
 int main(int argc,char *argv[])
 {
@@ -1052,8 +1225,8 @@ int main(int argc,char *argv[])
 
 	/*store send buf in char for compare********/
 	int s = 0, eth_ft = 0;
-	SendBuf = malloc(1024);
-	ReceiveBuf = malloc(1024);
+	SendBuf = (char*)malloc(sizeof(DHCPdocsisBuf));
+	ReceiveBuf = (char*)malloc(sizeof(DHCPdocsisBuf));
 
 	for(s = 18; s < sizeof(DHCPdocsisBuf); s++)
 	{
@@ -1061,14 +1234,40 @@ int main(int argc,char *argv[])
 	}
 
 	int s_p = 0, eth_pk = 0;
-	SendpktcBuf = malloc(1024);
+	SendpktcBuf = (char*)malloc(sizeof(DHCPpktcBuf));
 	for(s_p = 18; s_p < sizeof(DHCPpktcBuf); s_p++)
 	{
 		SendpktcBuf[eth_pk++] = DHCPpktcBuf[s_p];
 	}
 	/*******************************************/
 
-	int pth_send = 0, pth_read = 0;
+	/*store send offer buf in char for compare********/
+	int s_off = 0, eth_ftoff = 0;
+	SendBuf_offer = (char*)malloc(sizeof(DHCPdocsisBuf_offer));
+	ReceiveBuf_offer = (char*)malloc(sizeof(DHCPdocsisBuf_offer));
+
+	for(s_off = 14; s_off < sizeof(DHCPdocsisBuf_offer); s_off++)
+	{
+		SendBuf_offer[eth_ftoff++] = DHCPdocsisBuf_offer[s_off];
+	}
+
+	int s_poff = 0, eth_pkoff = 0;
+	SendpktcBuf_offer = (char*)malloc(sizeof(DHCPpktcBuf_offer));
+	for(s_poff = 14; s_poff < sizeof(DHCPpktcBuf_offer); s_poff++)
+	{
+		SendpktcBuf_offer[eth_pkoff++] = DHCPpktcBuf_offer[s_poff];
+	}
+	/*******************************************/
+
+	//for debug
+	/*int off = 0;
+	for(; off < sizeof(DHCPdocsisBuf_offer); off++)
+	{
+		printf("0x%02x,",SendBuf_offer[off]);
+	}
+	printf("\n");
+*/
+	int pth_send = 0, pth_read = 0, pth_read_lan = 0;
 	int pth_status = 0;
 
 	pth_send = pthread_create(&pthreadSendPacket, NULL, (void*)send_packet, NULL);
@@ -1087,21 +1286,33 @@ int main(int argc,char *argv[])
 		exit(1);
 	}
 
+	pth_read_lan = pthread_create(&pthreadReadLoopLAN, NULL, (void*)read_loop_lan, NULL);
+	if( pth_read_lan != 0 )
+	{
+		printf("Create Read LAN Port Function Thread Error\n");
+		printf("exit........................\n");
+		exit(1);
+	}
+
 	/*Process status test*/
-	pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
+/*	pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
 	if( pth_status != 0 )
 	{
 		printf("Create Status Function Thread Error\n");
 		printf("exit........................\n");
 		exit(1);
 	}
-
+*/
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
-	pthread_join(pthreadProcessStatus, NULL);
+	pthread_join(pthreadReadLoopLAN, NULL);
+//	pthread_join(pthreadProcessStatus, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);
 	free(ReceiveBuf);
+	free(SendBuf_offer);
+	free(ReceiveBuf_offer);
+	free(SendpktcBuf_offer);
 	return 0;
 }
