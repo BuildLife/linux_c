@@ -11,6 +11,10 @@
 #include <time.h>
 #include <unistd.h>
 
+/*Serial port connect*/
+#include <fcntl.h>
+#include <termios.h>
+
 /*Variable type*/
 //#include <bsd/string.h>
 #include <string.h>
