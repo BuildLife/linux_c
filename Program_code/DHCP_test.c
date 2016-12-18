@@ -375,12 +375,43 @@ void Signal_Stophandler()
 }
 
 /*For test signal alarm*/
-void SignalAlarmProcessStatus(int signo)
+/*void SignalAlarmProcessStatus(int signo)
 {
 	alarm(10);
 	printf("set alarm status for check\n");
 	//signal(SIGALRM,SignalAlarmProcessStatus);
+}*/
+
+
+/*Client socket for use*/
+void ThreadClientSocket()
+{	
+	int clientfd;
+	struct sockaddr_in client_addr;
+	char client_buffer[128];
+
+	/*create socket*/
+	clientfd = socket(AF_INET, SOCK_STREAM, 0);
+
+	/*Initialize client socket*/
+	bzero(&client_addr, sizeof(client_addr));
+	client_addr.sin_family = AF_INET;
+	client_addr.sin_port = htons(9998);
+	client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	/*Connet to server*/
+	connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+	/*Receive message from Server controller*/
+	bzero(client_buffer,128);
+
+	recv(clientfd, client_buffer, sizeof(client_buffer), 0);
+
+	printf("Receive from server :%s\n",client_buffer);
+
+	close(clientfd);
 }
+
 
 void Menu(char *mode)
 {
@@ -1157,7 +1188,7 @@ void send_packet()
 void process_status()
 {
 	//test for check process status
-	signal(SIGALRM,SignalAlarmProcessStatus);
+	//signal(SIGALRM,SignalAlarmProcessStatus);
 
 	int status;
 	pid_t pid;
@@ -1199,6 +1230,9 @@ pthread_t pthreadReadLoopLAN;
 
 /*check process work status*/
 pthread_t pthreadProcessStatus;
+
+/*Thread socket*/
+pthread_t pthreadSocketClient;
 
 int main(int argc,char *argv[])
 {
@@ -1255,7 +1289,7 @@ int main(int argc,char *argv[])
 	/*******************************************/
 
 	int pth_send = 0, pth_read = 0, pth_read_lan = 0;
-	int pth_status = 0;
+	int pth_status = 0, pth_socket = 0;
 
 	pth_send = pthread_create(&pthreadSendPacket, NULL, (void*)send_packet, NULL);
 	if( pth_send != 0 )
@@ -1282,10 +1316,19 @@ int main(int argc,char *argv[])
 	}
 
 	/*Process status test*/
-	pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
+	/*pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
 	if( pth_status != 0 )
 	{
 		printf("Create Status Function Thread Error\n");
+		printf("exit........................\n");
+		exit(1);
+	}*/
+
+	/*Client Socket*/
+	pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
+	if( pth_socket != 0 )
+	{
+		printf("Create Socket Function Thread Error\n");
 		printf("exit........................\n");
 		exit(1);
 	}
@@ -1293,7 +1336,8 @@ int main(int argc,char *argv[])
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
-	pthread_join(pthreadProcessStatus, NULL);
+	//pthread_join(pthreadProcessStatus, NULL);
+	pthread_join(pthreadSocketClient, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);

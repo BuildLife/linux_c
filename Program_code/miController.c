@@ -1,5 +1,5 @@
 #include "lib_file.h"
-
+ 
 
 #define BAUDRATE B38400
 #define MAPDEVICE "/dev/ttyUSB0"
@@ -9,6 +9,7 @@
 #define TRUE 1
 
 
+void ThreadSocket();
 volatile int STOP = FALSE;
 
 void StopSignal()
@@ -22,8 +23,13 @@ void StopSignal()
 }
 */
 
+/*Use in socket server running*/
+pthread_t pthreadSocketServerRunning;
+
 int main(int argc,char *argv[])
 {
+
+	int pth_socserver = 0;
 	//signal(SIGINT,&StopSignal);
 	//signal(SIGALARM,);
 	int fd, c, res, wes;
@@ -41,7 +47,7 @@ int main(int argc,char *argv[])
 	if( fd < 0 )
 	{
 		perror(MAPDEVICE);
-		exit(-1);
+		//exit(-1);
 	}
 	
 	fcntl(fd, F_SETFL, FNDELAY);
@@ -89,6 +95,15 @@ int main(int argc,char *argv[])
 
 	write(fd, "\n",1);
 	sleep(1);
+	/*Enter in thread socket server*/
+	pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
+	if(pth_socserver < 0)
+	{
+		printf("Create Socket server Error\n");
+		exit(1);
+	}
+	pthread_join(pthreadSocketServerRunning, NULL);
+
 	while(STOP == FALSE)
 	{
 		res = read(fd, buf, 255);
@@ -101,4 +116,68 @@ int main(int argc,char *argv[])
 	}
 
 	return 0;
+}
+
+void ThreadSocket()
+{
+	int sockfd;
+	int clientfd;
+	struct sockaddr_in server_addr;
+	struct sockaddr_in client_addr;
+	char buffer[128] = {0x0a,0x03,0x88,0x99,0xff};
+
+
+	struct in_addr LocalInterface;
+
+	//create socket
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(sockfd < 0)
+	{
+		perror("Opening socket server error\n");
+		exit(1);
+	}
+	else
+		printf("Opening socket sever Success\n");
+
+	//initiallze structure
+	bzero(&server_addr, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(9998);
+
+	//for client
+	server_addr.sin_addr.s_addr = INADDR_ANY;
+
+	/*for multi socket client to connect*/
+	/*LocalInterface.s_addr = inet_addr("127.0.0.1");
+	if(setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_IF, (char*)&LocalInterface,sizeof(LocalInterface)) < 0)
+	{
+		perror("Setting local interface error");
+		exit(1);
+	}	
+	else
+		printf("Setting local interface Success\n");
+*/
+	//assign a port number to socket
+	bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+
+	//listen to client to connect
+	listen(sockfd, 20);
+
+	while(1)
+	{
+		//wait and accept client to connection
+		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,sizeof(client_addr));
+
+		
+		//sending to client message
+		send(clientfd,buffer,sizeof(buffer),0);
+		printf("Sending to client:%s\n",buffer);
+
+
+	
+		close(clientfd);
+	}
+	//close socket server
+	close(sockfd);
+
 }
