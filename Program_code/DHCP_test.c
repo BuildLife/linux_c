@@ -386,12 +386,20 @@ void Signal_Stophandler()
 /*Client socket for use*/
 void ThreadClientSocket()
 {	
+	int getvalue = 0;
 	int clientfd;
+	int res = 0;
 	struct sockaddr_in client_addr;
 	char client_buffer[128];
 
 	/*create socket*/
 	clientfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(clientfd < 0)
+	{
+		perror("Open client socket Error\n");
+	}
+	else
+		printf("Open client socket success\n");
 
 	/*Initialize client socket*/
 	bzero(&client_addr, sizeof(client_addr));
@@ -405,9 +413,30 @@ void ThreadClientSocket()
 	/*Receive message from Server controller*/
 	bzero(client_buffer,128);
 
-	recv(clientfd, client_buffer, sizeof(client_buffer), 0);
+	res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
 
-	printf("Receive from server :%s\n",client_buffer);
+	if(res < 0)
+	{
+		printf("Can't receive socket buffer\n");
+	}
+	else
+	{
+		printf("Receive from server :0x%02x\n",client_buffer[0]);
+		printf("Receive from server :0x%02x\n",client_buffer[1]);
+		printf("Receive from server :0x%02x\n",client_buffer[2]);
+		getvalue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
+		printf("Running times :%d\n",getvalue);
+	}
+
+	if(client_buffer[0] != 0)
+	{
+		putchar(client_buffer[0]&0xff);
+		puts("\n");
+	//	sleep(2);
+		//puts(getvalue);
+	//	sleep(2);
+	//	puts(0);
+	}
 
 	close(clientfd);
 }
@@ -429,11 +458,19 @@ void Menu(char *mode)
 		printf("Sending Times : ");
 		scanf("%d",&Running_Times);
 		if(Running_Times == 0)
+		{
+			/*Use in while loop always still Running*/
 			KeepRunning = 1;
+
+			/*It's for control stop while loop of Ctrl+c*/
+			/*Avoid enter expect Ctrl+c, so in the start to set 0*/
+			StopLoopRunning = 0;
+		}
 		printf("Enter Start VID(limit : 2292):\n");
 		printf("VID : ");
 		scanf("%u",&Start_VID);
-		if(Start_VID >= 2049 && Start_VID < 2293)
+		//if(Start_VID >= 2049 && Start_VID < 2293)
+		if(Start_VID >= 2049 && Start_VID < 2512)
 		{		
 			DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
 			DHCPdocsisBuf[15] = (Start_VID) & 0xff;
@@ -1010,10 +1047,22 @@ void MACandVIDplus()
 	}
 
 	//vlan tag
-	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
+	//if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
+	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff < 2512) || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff < 2512))
 	{
-		DHCPpktcBuf[15] += 0x01;
-		DHCPdocsisBuf[15] += 0X01;
+		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
+		{	
+			DHCPdocsisBuf[14] += 0x01;
+			DHCPpktcBuf[14] += 0x01;
+
+			DHCPdocsisBuf[15] = 0x00;
+			DHCPpktcBuf[15] = 0x00;
+		}
+		else
+		{
+			DHCPpktcBuf[15] += 0x01;
+			DHCPdocsisBuf[15] += 0X01;
+		}
 	}
 	else
 	{

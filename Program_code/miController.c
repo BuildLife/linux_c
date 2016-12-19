@@ -9,7 +9,18 @@
 #define TRUE 1
 
 
+char *vlan_mode = "default";
+int  Runtimes = 0;
+
 void ThreadSocket();
+
+
+/*Use in socket server*/
+int sockfd;
+int clientfd;
+struct sockaddr_in server_addr;
+struct sockaddr_in client_addr;
+
 volatile int STOP = FALSE;
 
 void StopSignal()
@@ -36,13 +47,21 @@ int main(int argc,char *argv[])
 	struct termio options;
 	char buf[255];
 	char *w_buf = "configure terminal\n";
-	char w_o_buf[64] = {0};
-	char *vlan_mode = "default";
+	char w_o_buf[255] = {0};
 
-	vlan_mode = argv[1];
+	if(argc == 3)
+	{
+		vlan_mode = argv[1];
+		Runtimes = atoi(argv[2]);
+	}
 	memset(w_o_buf, 0, sizeof(w_o_buf));
-	sprintf(w_o_buf,"vlan rule %s\n",vlan_mode);
+
+	if(!strcmp(vlan_mode,"DVGM"))
+		sprintf(w_o_buf,"vlan rule disable\n");
+	else if(!strcmp(vlan_mode,"SVGM"))
+		sprintf(w_o_buf,"vlan rule enable\n");
 	
+
 	fd = open(MAPDEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if( fd < 0 )
 	{
@@ -95,6 +114,7 @@ int main(int argc,char *argv[])
 
 	write(fd, "\n",1);
 	sleep(1);
+
 	/*Enter in thread socket server*/
 	pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
 	if(pth_socserver < 0)
@@ -115,22 +135,29 @@ int main(int argc,char *argv[])
 		if(buf[0] == 'z') STOP=TRUE;
 	}
 
+	close(clientfd);
+	close(sockfd);
 	return 0;
 }
 
+void ThreadCmcControl()
+{
+
+
+
+}
+
+
 void ThreadSocket()
 {
-	int sockfd;
-	int clientfd;
-	struct sockaddr_in server_addr;
-	struct sockaddr_in client_addr;
-	char buffer[128] = {0x0a,0x03,0x88,0x99,0xff};
-
-
+	int send_res = 0;
+	int cl_addrlen = sizeof(client_addr);
+	char buffer[128] = {0};
+	
 	struct in_addr LocalInterface;
 
 	//create socket
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	sockfd = socket(PF_INET, SOCK_STREAM, 0);
 	if(sockfd < 0)
 	{
 		perror("Opening socket server error\n");
@@ -163,18 +190,31 @@ void ThreadSocket()
 	//listen to client to connect
 	listen(sockfd, 20);
 
+	if(!strcmp(vlan_mode,"DVGM"))
+		buffer[0] = 1;
+	else if(!strcmp(vlan_mode,"SVGM"))
+		buffer[0] = 2;
+
+	buffer[1] = (Runtimes >> 8) & 0xff;
+	buffer[2] = (Runtimes) & 0xff;
+
 	while(1)
 	{
 		//wait and accept client to connection
-		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,sizeof(client_addr));
-
+		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
 		
 		//sending to client message
-		send(clientfd,buffer,sizeof(buffer),0);
-		printf("Sending to client:%s\n",buffer);
-
-
-	
+		send_res = send(clientfd,buffer,sizeof(buffer),0);
+		if(send_res < 0)
+		{
+			printf("Sending buffer to client Error\n");
+		}
+		else
+		{
+			printf("Sending to client:0x%02x\n",buffer[1]&0xff);
+			printf("Sending to client:0x%02x\n",buffer[2]&0xff);
+		}
+		
 		close(clientfd);
 	}
 	//close socket server
