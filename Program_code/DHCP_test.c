@@ -444,6 +444,8 @@ void ThreadClientSocket()
 		Option_Receive(0, '1');
 	//	fputc(getvalue,stdout);
 	//	fputc('\n',stdout);
+		client_buffer[3] = 0x00;
+		send(clientfd, client_buffer, 4,0);
 	}
 	}
 	close(clientfd);

@@ -208,7 +208,7 @@ void ThreadSocket()
 		
 		//sending to client message
 		send_res = send(clientfd,buffer,sizeof(buffer),0);
-			buffer[3] = 0;
+	//	buffer[3] = 0;
 		if(send_res < 0)
 		{
 			printf("Sending buffer to client Error\n");
@@ -219,6 +219,9 @@ void ThreadSocket()
 			printf("Sending to client:0x%02x\n",buffer[2]&0xff);
 			printf("Sending to client:0x%02x\n",buffer[3]&0xff);
 		}
+		recv(clientfd, buffer, sizeof(buffer),0);
+
+		printf("rece from client : 0x%02x\n",buffer[3]&0xff);
 		//buffer[3] = 0;
 		close(clientfd);
 	}
