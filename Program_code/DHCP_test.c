@@ -67,6 +67,11 @@ typedef struct S_IP_HEADER
 
 #define MAC_ADDRSTRLEN 2*6+5+1
 
+/*Define use function*/
+void Option_Receive(int, char);
+
+
+
 /*Ethernet send port and receive port*/
 char *LAN_port = "eth14";
 char *WAN_port = "eth2";
@@ -88,7 +93,7 @@ char *DHCPBufMode = "default";
 
 /*Set send times and VID Range*/
 unsigned short Start_VID = 0;
-int Running_Times = 0, KeepRunning = 0;
+unsigned int Running_Times = 0, KeepRunning = 0;
 
 /*Record Compare data False times and True times*/
 int CompareFalseTimes = 0, CompareTrueTimes = 0;
@@ -100,6 +105,9 @@ int LosePacket = 0;
 /*Random Sending data*/
 int Random_send = 0;
 
+
+/*Auto testing flag*/
+int AutoTesting = 0;
 
 /*Pthread lock*/
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -412,7 +420,8 @@ void ThreadClientSocket()
 
 	/*Receive message from Server controller*/
 	bzero(client_buffer,128);
-
+	for(;;)
+	{
 	res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
 
 	if(res < 0)
@@ -421,23 +430,22 @@ void ThreadClientSocket()
 	}
 	else
 	{
-		printf("Receive from server :0x%02x\n",client_buffer[0]);
-		printf("Receive from server :0x%02x\n",client_buffer[1]);
-		printf("Receive from server :0x%02x\n",client_buffer[2]);
+		//printf("Receive from server :%d\n",client_buffer[3]&0xff);
+	//	printf("Receive from server :0x%02x\n",client_buffer[1]);
+	//	printf("Receive from server :0x%02x\n",client_buffer[2]);
 		getvalue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
-		printf("Running times :%d\n",getvalue);
+	//	printf("Running times :%d\n",getvalue);
 	}
 
-	if(client_buffer[0] != 0)
+	if(client_buffer[0] != 0 && (client_buffer[3] == 0x01))
 	{
-		putchar(client_buffer[0]&0xff);
-		puts("\n");
-	//	sleep(2);
-		//puts(getvalue);
-	//	sleep(2);
-	//	puts(0);
+		AutoTesting = 1;
+		Running_Times = getvalue;
+		Option_Receive(0, '1');
+	//	fputc(getvalue,stdout);
+	//	fputc('\n',stdout);
 	}
-
+	}
 	close(clientfd);
 }
 
@@ -452,30 +460,33 @@ void Menu(char *mode)
 		printf("3.Exit this Process\n");
 		printf("Ctrl+C --> leave the sending loop\n");
 	}
-	else if(mode == "DVGM" || mode == "SVGM")
+	else if( mode == "DVGM" || mode == "SVGM" )
 	{
-		printf("Enter Send Times or Enter 0 keep sending loop:\n");
-		printf("Sending Times : ");
-		scanf("%d",&Running_Times);
-		if(Running_Times == 0)
+		if(AutoTesting == 0)
 		{
-			/*Use in while loop always still Running*/
-			KeepRunning = 1;
+			printf("Enter Send Times or Enter 0 keep sending loop:\n");
+			printf("Sending Times : ");
+			scanf("%d",&Running_Times);
+			if(Running_Times == 0)
+			{
+				/*Use in while loop always still Running*/
+				KeepRunning = 1;
 
-			/*It's for control stop while loop of Ctrl+c*/
-			/*Avoid enter expect Ctrl+c, so in the start to set 0*/
-			StopLoopRunning = 0;
-		}
-		printf("Enter Start VID(limit : 2292):\n");
-		printf("VID : ");
-		scanf("%u",&Start_VID);
-		//if(Start_VID >= 2049 && Start_VID < 2293)
-		if(Start_VID >= 2049 && Start_VID < 2512)
-		{		
-			DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
-			DHCPdocsisBuf[15] = (Start_VID) & 0xff;
-			DHCPpktcBuf[14] = (Start_VID >> 8) & 0xff;
-			DHCPpktcBuf[15] = (Start_VID) & 0xff;
+				/*It's for control stop while loop of Ctrl+c*/
+				/*Avoid enter expect Ctrl+c, so in the start to set 0*/
+				StopLoopRunning = 0;
+			}
+			printf("Enter Start VID(limit : 2292):\n");
+			printf("VID : ");
+			scanf("%u",&Start_VID);
+			if(Start_VID >= 2049 && Start_VID < 2293)
+			//if(Start_VID >= 2049 && Start_VID < 2512)
+			{		
+				DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
+				DHCPdocsisBuf[15] = (Start_VID) & 0xff;
+				DHCPpktcBuf[14] = (Start_VID >> 8) & 0xff;
+				DHCPpktcBuf[15] = (Start_VID) & 0xff;
+			}
 		}
 	}
 	printf("***************************\n");
@@ -1048,7 +1059,7 @@ void MACandVIDplus()
 
 	//vlan tag
 	//if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
-	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff < 2512) || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff < 2512))
+	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2292)
 	{
 		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
 		{	
@@ -1074,8 +1085,31 @@ void MACandVIDplus()
 }
 
 
-void Option_Receive(int D_times, char sop, pcap_t *p_lan, pcap_t *p_wan)
+//void Option_Receive(int D_times, char sop, pcap_t *p_lan, pcap_t *p_wan)
+void Option_Receive(int D_times, char sop)
 {
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	/*LAN Port pcap send*/
+	pcap_t *p_lan;
+	
+	//CASTLE USEING : ubuntu 12.04
+	p_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
+	
+	if( p_lan == NULL ){
+		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
+		return 1;
+	}
+
+	/*WAN port pacp send*/
+	pcap_t *p_wan;
+
+	p_wan = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
+	if( p_wan == NULL ){
+		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
+		return 1;
+	}
+
 		/*Set send time interval */
 		struct timespec send_ts;
 		send_ts.tv_sec = 1;
@@ -1175,9 +1209,13 @@ void Option_Receive(int D_times, char sop, pcap_t *p_lan, pcap_t *p_wan)
 		CompareTrueTimes_offer = 0;
 		LosePacket = 0;
 		KeepRunning = 0;
+		Running_Times = 0;
+		AutoTesting = 0;
 		StopLoopRunning = 0;
 		D_times = 0;
 		Menu("default");
+		pcap_close(p_wan);
+		pcap_close(p_lan);
 		/******************************/
 }
 
@@ -1190,9 +1228,9 @@ void send_packet()
 	//calculation send dhcp times
 	int DHCPtimes = 0;
 
-	char errbuf[PCAP_ERRBUF_SIZE];
+	/*char errbuf[PCAP_ERRBUF_SIZE];
 
-	/*LAN Port pcap send*/
+	//LAN Port pcap send
 	pcap_t *p_send;
 	
 	//CASTLE USEING : ubuntu 12.04
@@ -1203,16 +1241,18 @@ void send_packet()
 		return 1;
 	}
 
-	/*WAN port pacp send*/
+	//WAN port pacp send
 	pcap_t *p_wan_send;
 
 	p_wan_send = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
-
-	while((buf = getchar()) != NULL)
+*/
+	//while((buf = getchar()) != NULL)
+	while((buf = fgetc(stdin)) != NULL)
 	{
 		if(buf == '1' || buf == '2')
 		{
-			Option_Receive(DHCPtimes, buf, p_send, p_wan_send);
+	//		Option_Receive(DHCPtimes, buf, p_send, p_wan_send);
+			Option_Receive(DHCPtimes, buf);
 		}
 		else if(buf == '3')
 		{
@@ -1222,13 +1262,13 @@ void send_packet()
 			free(SendBuf_offer);
 			free(ReceiveBuf_offer);
 			free(SendpktcBuf_offer);
-			pcap_close(p_send);
+	//		pcap_close(p_send);
 			exit(0);
 		}
 	}
 
-	pcap_close(p_wan_send);
-	pcap_close(p_send);
+	//pcap_close(p_wan_send);
+	//pcap_close(p_send);
 	
 }
 

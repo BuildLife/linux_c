@@ -10,7 +10,7 @@
 
 
 char *vlan_mode = "default";
-int  Runtimes = 0;
+int  Runtimes = 0, Autotest = 0;
 
 void ThreadSocket();
 
@@ -49,10 +49,11 @@ int main(int argc,char *argv[])
 	char *w_buf = "configure terminal\n";
 	char w_o_buf[255] = {0};
 
-	if(argc == 3)
+	if(argc == 4)
 	{
 		vlan_mode = argv[1];
 		Runtimes = atoi(argv[2]);
+		Autotest = atoi(argv[3]);
 	}
 	memset(w_o_buf, 0, sizeof(w_o_buf));
 
@@ -198,6 +199,8 @@ void ThreadSocket()
 	buffer[1] = (Runtimes >> 8) & 0xff;
 	buffer[2] = (Runtimes) & 0xff;
 
+	buffer[3] = Autotest;
+
 	while(1)
 	{
 		//wait and accept client to connection
@@ -205,6 +208,7 @@ void ThreadSocket()
 		
 		//sending to client message
 		send_res = send(clientfd,buffer,sizeof(buffer),0);
+			buffer[3] = 0;
 		if(send_res < 0)
 		{
 			printf("Sending buffer to client Error\n");
@@ -213,10 +217,12 @@ void ThreadSocket()
 		{
 			printf("Sending to client:0x%02x\n",buffer[1]&0xff);
 			printf("Sending to client:0x%02x\n",buffer[2]&0xff);
+			printf("Sending to client:0x%02x\n",buffer[3]&0xff);
 		}
-		
+		//buffer[3] = 0;
 		close(clientfd);
 	}
+	//	Autotest = 0;
 	//close socket server
 	close(sockfd);
 
