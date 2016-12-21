@@ -12,8 +12,14 @@
 char *vlan_mode = "default";
 int  Runtimes = 0, Autotest = 0;
 
-void ThreadSocket();
+/*Use in Start open socket command*/
+int OpenSocketFlag = 0;
 
+
+/*Define use function*/
+void ThreadSocket();
+void ThreadCmcControl();
+void SocketMenu();
 
 /*Use in socket server*/
 int sockfd;
@@ -37,17 +43,17 @@ void StopSignal()
 /*Use in socket server running*/
 pthread_t pthreadSocketServerRunning;
 
+/*Use in connect Com Port*/
+pthread_t pthreadComPort;
+
 int main(int argc,char *argv[])
 {
 
-	int pth_socserver = 0;
+	int pth_socserver = 0, pth_usbport = 0;
 	//signal(SIGINT,&StopSignal);
 	//signal(SIGALARM,);
-	int fd, c, res, wes;
-	struct termio options;
-	char buf[255];
-	char *w_buf = "configure terminal\n";
-	char w_o_buf[255] = {0};
+
+	char MainBuffer[32];
 
 	if(argc == 4)
 	{
@@ -55,6 +61,64 @@ int main(int argc,char *argv[])
 		Runtimes = atoi(argv[2]);
 		Autotest = atoi(argv[3]);
 	}
+
+	/*Enter in thread USB COMPORT*/
+	/*pth_usbport = pthread_create(&pthreadComPort, NULL, (void*)ThreadCmcControl, NULL);
+	if(pth_usbport < 0)
+	{
+		printf("Create Socket server Error\n");
+		exit(1);
+	}*/
+
+	/*Enter in thread socket server*/
+	/*pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
+	if(pth_socserver < 0)
+	{
+		printf("Create Socket server Error\n");
+		exit(1);
+	}*/
+
+	//pthread_join(pthreadComPort, NULL);
+	//pthread_join(pthreadSocketServerRunning, NULL);
+
+	while(fgets(MainBuffer, sizeof(MainBuffer), stdin) != NULL)
+	{
+		if(!strcmp(MainBuffer, "socket\n\0"))
+		{
+			pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
+			if(pth_socserver < 0)
+			{
+				printf("Create Socket server Error\n");
+				exit(1);
+			}
+			pthread_join(pthreadSocketServerRunning, NULL);
+			OpenSocketFlag = 1;
+		}
+		/*else if(!strcmp(MainBuffer, ""))
+		{
+
+
+
+		}*/
+		else if(!strcmp(MainBuffer, "exit\n\0"))
+		{
+			exit(0);
+		}
+	}
+
+	close(clientfd);
+	close(sockfd);
+	return 0;
+}
+
+void ThreadCmcControl()
+{
+	int fd, c, res, wes;
+	struct termio options;
+	char buf[255];
+	char *w_buf = "configure terminal\n";
+	char w_o_buf[255] = {0};
+
 	memset(w_o_buf, 0, sizeof(w_o_buf));
 
 	if(!strcmp(vlan_mode,"DVGM"))
@@ -116,15 +180,6 @@ int main(int argc,char *argv[])
 	write(fd, "\n",1);
 	sleep(1);
 
-	/*Enter in thread socket server*/
-	pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
-	if(pth_socserver < 0)
-	{
-		printf("Create Socket server Error\n");
-		exit(1);
-	}
-	pthread_join(pthreadSocketServerRunning, NULL);
-
 	while(STOP == FALSE)
 	{
 		res = read(fd, buf, 255);
@@ -133,18 +188,7 @@ int main(int argc,char *argv[])
 		printf(":%s\n",buf);
 		write(fd,w_o_buf,sizeof(w_o_buf));
 		sleep(2);
-		if(buf[0] == 'z') STOP=TRUE;
 	}
-
-	close(clientfd);
-	close(sockfd);
-	return 0;
-}
-
-void ThreadCmcControl()
-{
-
-
 
 }
 
@@ -165,8 +209,10 @@ void ThreadSocket()
 		exit(1);
 	}
 	else
+	{
 		printf("Opening socket sever Success\n");
-
+		//SocketMenu();
+	}
 	//initiallze structure
 	bzero(&server_addr, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
@@ -196,37 +242,67 @@ void ThreadSocket()
 	else if(!strcmp(vlan_mode,"SVGM"))
 		buffer[0] = 2;
 
-	buffer[1] = (Runtimes >> 8) & 0xff;
-	buffer[2] = (Runtimes) & 0xff;
-
-	buffer[3] = Autotest;
-
+	int c = 0;
+	char readbuf[64];
+	Runtimes = 2500;
 	while(1)
 	{
 		//wait and accept client to connection
+		printf("Enter in socket while loop\n");
 		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
-		
-		//sending to client message
-		send_res = send(clientfd,buffer,sizeof(buffer),0);
-	//	buffer[3] = 0;
-		if(send_res < 0)
-		{
-			printf("Sending buffer to client Error\n");
-		}
-		else
-		{
-			printf("Sending to client:0x%02x\n",buffer[1]&0xff);
-			printf("Sending to client:0x%02x\n",buffer[2]&0xff);
-			printf("Sending to client:0x%02x\n",buffer[3]&0xff);
-		}
-		recv(clientfd, buffer, sizeof(buffer),0);
+	
 
-		printf("rece from client : 0x%02x\n",buffer[3]&0xff);
-		//buffer[3] = 0;
+		//if(OpenSocketFlag == 1)
+		//{
+		SocketMenu();
+		while(fgets(readbuf, sizeof(readbuf), stdin)!=NULL)
+		{
+			if(!strcmp(readbuf,"auto\n\0"))
+			{
+				buffer[0] = 1;
+				buffer[1] = (Runtimes >> 8) & 0xff;
+				buffer[2] = (Runtimes) & 0xff;
+				buffer[3] = 1;
+
+				//sending to client message
+				if(send(clientfd,buffer,sizeof(buffer),0) < 0)
+				{
+					printf("Cannot send out to client\n");
+				}
+				recv(clientfd, buffer, sizeof(buffer),0);
+			}
+			else if(!strcmp(readbuf, "h\n\0"))
+			{
+				SocketMenu();
+			}
+			else if(!strcmp(readbuf, "exit\n\0"))
+			{
+				close(clientfd);
+				close(sockfd);
+				exit(0);
+			}
+			else
+				printf("No this optins\n");
+		}
 		close(clientfd);
+		//}
 	}
-	//	Autotest = 0;
-	//close socket server
 	close(sockfd);
+}
 
+/*int SocketSendBuffer(int client, char buffer)
+{
+
+
+	return 0;
+}*/
+
+
+void SocketMenu()
+{
+	printf("*********** User Menu **********\n");
+	printf("Sending auto test command : auto\n");
+	printf("Safess leave this program : exit\n");
+	printf("Show Menu : h\n");
+	printf("********************************\n");
 }

@@ -437,7 +437,7 @@ void ThreadClientSocket()
 	//	printf("Running times :%d\n",getvalue);
 	}
 
-	if(client_buffer[0] != 0 && (client_buffer[3] == 0x01))
+	if((client_buffer[0] != 0) && (client_buffer[3] == 0x01))
 	{
 		AutoTesting = 1;
 		Running_Times = getvalue;
