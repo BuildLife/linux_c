@@ -392,7 +392,7 @@ void Signal_Stophandler()
 
 
 /*Client socket for use*/
-void ThreadClientSocket()
+/*void ThreadClientSocket()
 {	
 	int getvalue = 0;
 	int clientfd;
@@ -400,7 +400,7 @@ void ThreadClientSocket()
 	struct sockaddr_in client_addr;
 	char client_buffer[128];
 
-	/*create socket*/
+	//create socket
 	clientfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(clientfd < 0)
 	{
@@ -409,48 +409,46 @@ void ThreadClientSocket()
 	else
 		printf("Open client socket success\n");
 
-	/*Initialize client socket*/
+	//Initialize client socket
 	bzero(&client_addr, sizeof(client_addr));
 	client_addr.sin_family = AF_INET;
 	client_addr.sin_port = htons(9998);
 	client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-	/*Connet to server*/
+	//Connet to server
 	connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
 
-	/*Receive message from Server controller*/
+	//Receive message from Server controller
 	bzero(client_buffer,128);
 	for(;;)
 	{
-	res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
+		res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
 
-	if(res < 0)
-	{
-		printf("Can't receive socket buffer\n");
-	}
-	else
-	{
-		//printf("Receive from server :%d\n",client_buffer[3]&0xff);
-	//	printf("Receive from server :0x%02x\n",client_buffer[1]);
-	//	printf("Receive from server :0x%02x\n",client_buffer[2]);
-		getvalue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
-	//	printf("Running times :%d\n",getvalue);
-	}
+		if(res < 0)
+		{
+			printf("Can't receive socket buffer\n");
+		}
+		else
+		{
+			getvalue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
+		}
 
-	if((client_buffer[0] != 0) && (client_buffer[3] == 0x01))
-	{
-		AutoTesting = 1;
-		Running_Times = getvalue;
-		Option_Receive(0, '1');
-	//	fputc(getvalue,stdout);
-	//	fputc('\n',stdout);
-		client_buffer[3] = 0x00;
-		send(clientfd, client_buffer, 4,0);
-	}
+		if((client_buffer[0] != 0) && (client_buffer[3] == 0x01))
+		{
+			AutoTesting = 1;
+			Running_Times = getvalue;
+			Option_Receive(0, '1');
+			client_buffer[3] = 0x00;
+			send(clientfd, client_buffer, 4,0);
+		}
+		else if(client_buffer[3] == 0x02)
+		{
+			StopLoopRunning = 1;	
+		}
 	}
 	close(clientfd);
 }
-
+*/
 
 void Menu(char *mode)
 {
@@ -481,8 +479,8 @@ void Menu(char *mode)
 			printf("Enter Start VID(limit : 2292):\n");
 			printf("VID : ");
 			scanf("%u",&Start_VID);
-			if(Start_VID >= 2049 && Start_VID < 2293)
-			//if(Start_VID >= 2049 && Start_VID < 2512)
+			//if(Start_VID >= 2049 && Start_VID < 2293)
+			if(Start_VID >= 2049 && Start_VID < 2512)
 			{		
 				DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
 				DHCPdocsisBuf[15] = (Start_VID) & 0xff;
@@ -1026,19 +1024,13 @@ void MACandVIDplus()
 			DHCPdocsisBuf[10] += 0x01;
 			DHCPpktcBuf[10] += 0x01;
 
-		//	DHCPpktcBuf_offer[4] = DHCPpktcBuf[10];
-		//	DHCPdocsisBuf_offer[4] = DHCPdocsisBuf[10];
 
 			DHCPdocsisBuf[11] = 0x00;
 			DHCPpktcBuf[11] = 0x00;
 
-		//	DHCPpktcBuf_offer[5] = DHCPpktcBuf[11];
-		//	DHCPdocsisBuf_offer[5] = DHCPdocsisBuf[11];
 		}
 		else
 		{
-		//	DHCPpktcBuf_offer[5] = DHCPpktcBuf[11];
-		//	DHCPdocsisBuf_offer[5] = DHCPdocsisBuf[11];
 			
 			DHCPdocsisBuf[11] += 0x01;
 			DHCPpktcBuf[11] += 0x01;
@@ -1050,18 +1042,11 @@ void MACandVIDplus()
 		DHCPdocsisBuf[10] = 0X00;
 		DHCPpktcBuf[11] = 0x00;
 		DHCPdocsisBuf[11] = 0X00;
-
-
-	//	DHCPpktcBuf_offer[4] = 0x00;
-	//	DHCPdocsisBuf_offer[4] = 0X00;
-	//	DHCPpktcBuf_offer[5] = 0x00;
-	//	DHCPdocsisBuf_offer[5] = 0X00;
-		
 	}
 
 	//vlan tag
 	//if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
-	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2292)
+	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2512 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2512)
 	{
 		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
 		{	
@@ -1230,30 +1215,10 @@ void send_packet()
 	//calculation send dhcp times
 	int DHCPtimes = 0;
 
-	/*char errbuf[PCAP_ERRBUF_SIZE];
-
-	//LAN Port pcap send
-	pcap_t *p_send;
-	
-	//CASTLE USEING : ubuntu 12.04
-	p_send = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
-	
-	if( p_send == NULL ){
-		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
-		return 1;
-	}
-
-	//WAN port pacp send
-	pcap_t *p_wan_send;
-
-	p_wan_send = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
-*/
-	//while((buf = getchar()) != NULL)
 	while((buf = fgetc(stdin)) != NULL)
 	{
 		if(buf == '1' || buf == '2')
 		{
-	//		Option_Receive(DHCPtimes, buf, p_send, p_wan_send);
 			Option_Receive(DHCPtimes, buf);
 		}
 		else if(buf == '3')
@@ -1264,19 +1229,14 @@ void send_packet()
 			free(SendBuf_offer);
 			free(ReceiveBuf_offer);
 			free(SendpktcBuf_offer);
-	//		pcap_close(p_send);
 			exit(0);
 		}
 	}
-
-	//pcap_close(p_wan_send);
-	//pcap_close(p_send);
-	
 }
 
 
 /*check process*/
-void process_status()
+/*void process_status()
 {
 	//test for check process status
 	//signal(SIGALRM,SignalAlarmProcessStatus);
@@ -1306,7 +1266,7 @@ void process_status()
 
 	if(WIFCONTINUED(status))
 		printf("Continued\n");
-}
+}*/
 
 
 
@@ -1416,19 +1376,19 @@ int main(int argc,char *argv[])
 	}*/
 
 	/*Client Socket*/
-	pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
+	/*pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
 	if( pth_socket != 0 )
 	{
 		printf("Create Socket Function Thread Error\n");
 		printf("exit........................\n");
 		exit(1);
-	}
+	}*/
 
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
 	//pthread_join(pthreadProcessStatus, NULL);
-	pthread_join(pthreadSocketClient, NULL);
+	//pthread_join(pthreadSocketClient, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);

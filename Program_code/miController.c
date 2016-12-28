@@ -19,7 +19,9 @@ int OpenSocketFlag = 0;
 /*Define use function*/
 void ThreadSocket();
 void ThreadCmcControl();
+void MainMenu();
 void SocketMenu();
+void SetSendClientValue(int *);
 
 /*Use in socket server*/
 int sockfd;
@@ -81,6 +83,7 @@ int main(int argc,char *argv[])
 	//pthread_join(pthreadComPort, NULL);
 	//pthread_join(pthreadSocketServerRunning, NULL);
 
+	MainMenu();
 	while(fgets(MainBuffer, sizeof(MainBuffer), stdin) != NULL)
 	{
 		if(!strcmp(MainBuffer, "socket\n\0"))
@@ -92,14 +95,12 @@ int main(int argc,char *argv[])
 				exit(1);
 			}
 			pthread_join(pthreadSocketServerRunning, NULL);
-			OpenSocketFlag = 1;
+			
 		}
-		/*else if(!strcmp(MainBuffer, ""))
+		else if(!strcmp(MainBuffer, "h\n\0"))
 		{
-
-
-
-		}*/
+			MainMenu();
+		}
 		else if(!strcmp(MainBuffer, "exit\n\0"))
 		{
 			exit(0);
@@ -199,7 +200,7 @@ void ThreadSocket()
 	int cl_addrlen = sizeof(client_addr);
 	char buffer[128] = {0};
 	
-	struct in_addr LocalInterface;
+	int yes = 1;
 
 	//create socket
 	sockfd = socket(PF_INET, SOCK_STREAM, 0);
@@ -221,45 +222,49 @@ void ThreadSocket()
 	//for client
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 
-	/*for multi socket client to connect*/
-	/*LocalInterface.s_addr = inet_addr("127.0.0.1");
-	if(setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_IF, (char*)&LocalInterface,sizeof(LocalInterface)) < 0)
+	/*for multi socket client to connect
+	  Avoid that address already in use,and can be use the same port.*/
+	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes,sizeof(yes)) < 0)
 	{
 		perror("Setting local interface error");
 		exit(1);
 	}	
 	else
 		printf("Setting local interface Success\n");
-*/
+
 	//assign a port number to socket
 	bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
 	//listen to client to connect
 	listen(sockfd, 20);
 
-	if(!strcmp(vlan_mode,"DVGM"))
-		buffer[0] = 1;
-	else if(!strcmp(vlan_mode,"SVGM"))
-		buffer[0] = 2;
-
 	int c = 0;
-	char readbuf[64];
-	Runtimes = 2500;
+	int GetMode = 0;
+	char Cmdbuf[64];
+	//Runtimes = 2500;
 	while(1)
 	{
 		//wait and accept client to connection
-		printf("Enter in socket while loop\n");
+		printf("Waiting for client to connect........................\n");
 		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
-	
-
-		//if(OpenSocketFlag == 1)
-		//{
-		SocketMenu();
-		while(fgets(readbuf, sizeof(readbuf), stdin)!=NULL)
+		if(clientfd > 0)
 		{
-			if(!strcmp(readbuf,"auto\n\0"))
+			printf("Client Connect Fail, Please Check it again.......\n");
+			pthread_cancel(pthreadSocketServerRunning);
+			printf("Leave the Socket Thread Function, Please Re-start the Socket Serve.\n");
+		}
+		else
+		{
+			printf("Client Connect Success...........................\n");
+			SetSendClientValue(&buffer[0]);
+		}
+
+		SocketMenu();
+		while(fgets(Cmdbuf, sizeof(Cmdbuf), stdin)!=NULL)
+		{
+			if(!strcmp(Cmdbuf,"auto\n\0"))
 			{
-				buffer[0] = 1;
+				//buffer[0] = 1;
 				buffer[1] = (Runtimes >> 8) & 0xff;
 				buffer[2] = (Runtimes) & 0xff;
 				buffer[3] = 1;
@@ -271,38 +276,60 @@ void ThreadSocket()
 				}
 				recv(clientfd, buffer, sizeof(buffer),0);
 			}
-			else if(!strcmp(readbuf, "h\n\0"))
+			else if(!strcmp(Cmdbuf, "h\n\0"))
 			{
 				SocketMenu();
 			}
-			else if(!strcmp(readbuf, "exit\n\0"))
+			else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
+				buffer[3] = 2;
+				Send(Clientfd,buffer,sizeof(buffer),0);
+			}
+			else if(!strcmp(Cmdbuf, "exit\n\0"))
+			{
+				printf("Socket thread cancel.............. \n");
 				close(clientfd);
 				close(sockfd);
-				exit(0);
+				pthread_cancel(pthreadSocketServerRunning);
+				MainMenu();
 			}
 			else
 				printf("No this optins\n");
 		}
 		close(clientfd);
-		//}
 	}
 	close(sockfd);
 }
 
-/*int SocketSendBuffer(int client, char buffer)
+//Show Main User Menu to use
+void MainMenu()
 {
+	printf("*********** Main User Menu **********\n");
+	printf("Opening Socket Server for Ready to auto test: socket\n");
+	printf("Safe leave this Main program : exit\n");
+	printf("Show Main Menu : h\n");
+	printf("*************************************\n");
+}
 
-
-	return 0;
-}*/
-
-
+//Show Socket Menu to use
 void SocketMenu()
 {
-	printf("*********** User Menu **********\n");
+	printf("*********** Socket User Menu **********\n");
 	printf("Sending auto test command : auto\n");
-	printf("Safess leave this program : exit\n");
-	printf("Show Menu : h\n");
-	printf("********************************\n");
+	printf("Leave the Socket Serve thread Function : exit\n");
+	printf("Show Socket Menu : h\n");
+	printf("***************************************\n");
+}
+void SetSendClientValue(int *mode)
+{
+	printf("Set Value Sending to client for auto test:\n");
+	printf("Enter Test Mode (DVGM/SVGM): \n");
+	scanf("%s",vlan_mode);
+	if(!strcmp(vlan_mode,"DVGM"))
+		mode = 1;
+	else if(!strcmp(vlan_mode,"SVGM"))
+		mode = 2;
+
+	printf("Enter Running Times : \n");
+	scanf("%d",&RunTimes);
 }
