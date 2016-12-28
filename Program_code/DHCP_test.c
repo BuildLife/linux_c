@@ -100,14 +100,16 @@ int CompareFalseTimes = 0, CompareTrueTimes = 0;
 int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 
 /*Record send lose packet*/
-int LosePacket = 0;
+//int LosePacket = 0;
 
 /*Random Sending data*/
 int Random_send = 0;
 
-
 /*Auto testing flag*/
 int AutoTesting = 0;
+
+/*Record Lose packet*/
+int Receivedocsispkt = 0, Receivepktcpkt = 0;
 
 /*Pthread lock*/
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -684,6 +686,9 @@ void dump_ip(ip_header *ipv4, int length)
 		int x_offer = 0;
 		if(htons(ipv4 -> ip_id) == 0xdead)
 		{
+			//Record receive docsis packet
+			Receivedocsispkt++;
+
 			ReceiveBuf = (char*)ipv4;
 
 			if(DHCPBufMode == "docsis")
@@ -731,6 +736,9 @@ void dump_ip(ip_header *ipv4, int length)
 		}
 		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
 		{
+			//Record receive packet
+			Receivepktcpkt++;
+
 			ReceiveBuf_offer = (char*)ipv4;
 			if(DHCPBufMode == "docsis")
 			{
@@ -1099,8 +1107,8 @@ void Option_Receive(int D_times, char sop)
 
 		/*Set send time interval */
 		struct timespec send_ts;
-		send_ts.tv_sec = 1;
-		send_ts.tv_nsec = 0;
+		send_ts.tv_sec = 0;
+		send_ts.tv_nsec = 500000000;
 
 		if(sop == '1')
 			ChangeMode = "DVGM";
@@ -1178,14 +1186,16 @@ void Option_Receive(int D_times, char sop)
 		printf("False : %d\n",CompareFalseTimes);
 		printf("True  : %d\n",CompareTrueTimes);
 		printf("Discover -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n",D_times - (CompareFalseTimes + CompareTrueTimes));
+		//printf("Lose Packet : %d\n",D_times - (CompareFalseTimes + CompareTrueTimes));
+		printf("Lose Packet : %d\n",D_times - Receivedocsispkt);
 		printf("\n");
 		printf("--------LAN <------------------------  WAN--------\n");
 		printf("OFFER -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n",CompareFalseTimes_offer);
 		printf("True  : %d\n",CompareTrueTimes_offer);
 		printf("OFFER -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n",D_times - (CompareFalseTimes_offer + CompareTrueTimes_offer));
+		//printf("Lose Packet : %d\n",D_times - (CompareFalseTimes_offer + CompareTrueTimes_offer));
+		printf("Lose Packet : %d\n",D_times - Receivepktcpkt);
 		printf("***************************************************\n");
 		printf("\n");
 
@@ -1194,7 +1204,9 @@ void Option_Receive(int D_times, char sop)
 		CompareTrueTimes = 0;
 		CompareFalseTimes_offer = 0;
 		CompareTrueTimes_offer = 0;
-		LosePacket = 0;
+		Receivedocsispkt = 0;
+		Receivepktcpkt = 0;
+		//LosePacket = 0;
 		KeepRunning = 0;
 		Running_Times = 0;
 		AutoTesting = 0;
