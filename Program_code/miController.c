@@ -9,8 +9,10 @@
 #define TRUE 1
 
 
-char *vlan_mode = "default";
-int  Runtimes = 0, Autotest = 0;
+//char *vlan_mode = "default";
+char vlan_mode[32] = {0};
+int Runtimes = 0, Autotest = 0;
+int StartVID = 0;
 
 /*Use in Start open socket command*/
 int OpenSocketFlag = 0;
@@ -57,12 +59,12 @@ int main(int argc,char *argv[])
 
 	char MainBuffer[32];
 
-	if(argc == 4)
+	/*if(argc == 4)
 	{
 		vlan_mode = argv[1];
 		Runtimes = atoi(argv[2]);
 		Autotest = atoi(argv[3]);
-	}
+	}*/
 
 	/*Enter in thread USB COMPORT*/
 	/*pth_usbport = pthread_create(&pthreadComPort, NULL, (void*)ThreadCmcControl, NULL);
@@ -84,6 +86,7 @@ int main(int argc,char *argv[])
 	//pthread_join(pthreadSocketServerRunning, NULL);
 
 	MainMenu();
+
 	while(fgets(MainBuffer, sizeof(MainBuffer), stdin) != NULL)
 	{
 		if(!strcmp(MainBuffer, "socket\n\0"))
@@ -241,17 +244,16 @@ void ThreadSocket()
 	int c = 0;
 	int GetMode = 0;
 	char Cmdbuf[64];
-	//Runtimes = 2500;
 	while(1)
 	{
 		//wait and accept client to connection
 		printf("Waiting for client to connect........................\n");
 		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
-		if(clientfd > 0)
+		if(clientfd < 0)
 		{
 			printf("Client Connect Fail, Please Check it again.......\n");
 			pthread_cancel(pthreadSocketServerRunning);
-			printf("Leave the Socket Thread Function, Please Re-start the Socket Serve.\n");
+			printf("Leave the Socket Thread Function, Please Re-start the Socket Server.\n");
 		}
 		else
 		{
@@ -264,10 +266,11 @@ void ThreadSocket()
 		{
 			if(!strcmp(Cmdbuf,"auto\n\0"))
 			{
-				//buffer[0] = 1;
 				buffer[1] = (Runtimes >> 8) & 0xff;
 				buffer[2] = (Runtimes) & 0xff;
-				buffer[3] = 1;
+				buffer[3] = (StartVID >> 8) & 0xff;
+				buffer[4] = (StartVID) & 0xff;
+				buffer[5] = 0x01;
 
 				//sending to client message
 				if(send(clientfd,buffer,sizeof(buffer),0) < 0)
@@ -282,8 +285,8 @@ void ThreadSocket()
 			}
 			else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
-				buffer[3] = 2;
-				Send(Clientfd,buffer,sizeof(buffer),0);
+				buffer[5] = 2;
+				send(clientfd,buffer,sizeof(buffer),0);
 			}
 			else if(!strcmp(Cmdbuf, "exit\n\0"))
 			{
@@ -320,16 +323,23 @@ void SocketMenu()
 	printf("Show Socket Menu : h\n");
 	printf("***************************************\n");
 }
+
 void SetSendClientValue(int *mode)
 {
 	printf("Set Value Sending to client for auto test:\n");
 	printf("Enter Test Mode (DVGM/SVGM): \n");
-	scanf("%s",vlan_mode);
+	scanf("%s",&vlan_mode);
 	if(!strcmp(vlan_mode,"DVGM"))
-		mode = 1;
+		*mode = 1;
 	else if(!strcmp(vlan_mode,"SVGM"))
-		mode = 2;
+		*mode = 2;
 
-	printf("Enter Running Times : \n");
-	scanf("%d",&RunTimes);
+	printf("Enter Running Times or 0 Keeping the loop running: \n");
+	scanf("%d",&Runtimes);
+
+	printf("Enter Start VID : \n");
+	if(scanf("%d",&StartVID) != 1)
+	{	
+		printf("Enter the wrong\n");
+	}
 }

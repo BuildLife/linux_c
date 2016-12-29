@@ -99,14 +99,11 @@ unsigned int Running_Times = 0, KeepRunning = 0;
 int CompareFalseTimes = 0, CompareTrueTimes = 0;
 int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 
-/*Record send lose packet*/
-//int LosePacket = 0;
+/*Auto testing flag*/
+int AutoTesting = 0;
 
 /*Random Sending data*/
 int Random_send = 0;
-
-/*Auto testing flag*/
-int AutoTesting = 0;
 
 /*Record Lose packet*/
 int Receivedocsispkt = 0, Receivepktcpkt = 0;
@@ -394,9 +391,10 @@ void Signal_Stophandler()
 
 
 /*Client socket for use*/
-/*void ThreadClientSocket()
+void ThreadClientSocket()
 {	
-	int getvalue = 0;
+	int GetTimesValue = 0;
+	int GetStartVID = 0;
 	int clientfd;
 	int res = 0;
 	struct sockaddr_in client_addr;
@@ -420,37 +418,66 @@ void Signal_Stophandler()
 	//Connet to server
 	connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
 
-	//Receive message from Server controller
 	bzero(client_buffer,128);
+
+	char testmode = '0';
+
+	//Receive message from Server controller
 	for(;;)
 	{
 		res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
 
-		if(res < 0)
+		if(res > 0)
 		{
-			printf("Can't receive socket buffer\n");
-		}
-		else
-		{
-			getvalue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
-		}
+			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
+			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
+			
+			if((client_buffer[0] != 0) && (client_buffer[5] == 0x01))
+			{
+				AutoTesting = 1;
 
-		if((client_buffer[0] != 0) && (client_buffer[3] == 0x01))
-		{
-			AutoTesting = 1;
-			Running_Times = getvalue;
-			Option_Receive(0, '1');
-			client_buffer[3] = 0x00;
-			send(clientfd, client_buffer, 4,0);
-		}
-		else if(client_buffer[3] == 0x02)
-		{
-			StopLoopRunning = 1;	
+				//set the loop running times
+				Running_Times = GetTimesValue;
+
+				//set start vid
+				Start_VID = GetStartVID;
+				if(Start_VID >= 2049 && Start_VID < 2512)
+				{		
+					DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
+					DHCPdocsisBuf[15] = (Start_VID) & 0xff;
+					DHCPpktcBuf[14] = (Start_VID >> 8) & 0xff;
+					DHCPpktcBuf[15] = (Start_VID) & 0xff;
+				}
+				
+				if(Running_Times == 0)
+				{
+					/*Use in while loop always still Running*/
+					KeepRunning = 1;
+
+					/*It's for control stop while loop of Ctrl+c
+					Avoid enter expect Ctrl+c, so in the start to set 0*/
+					StopLoopRunning = 0;
+				}
+
+				if(client_buffer[0] == 1)
+					testmode = '1';
+				else if(client_buffer[0] == 2)
+					testmode = '2';
+
+				Option_Receive(0, testmode);
+
+				client_buffer[5] = 0x00;
+				send(clientfd, client_buffer, 4,0);
+			}
+			else if(client_buffer[5] == 0x02)
+			{
+				StopLoopRunning = 1;	
+			}
 		}
 	}
 	close(clientfd);
 }
-*/
+
 
 void Menu(char *mode)
 {
@@ -481,7 +508,6 @@ void Menu(char *mode)
 			printf("Enter Start VID(limit : 2292):\n");
 			printf("VID : ");
 			scanf("%u",&Start_VID);
-			//if(Start_VID >= 2049 && Start_VID < 2293)
 			if(Start_VID >= 2049 && Start_VID < 2512)
 			{		
 				DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
@@ -1053,7 +1079,6 @@ void MACandVIDplus()
 	}
 
 	//vlan tag
-	//if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2292)
 	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2512 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2512)
 	{
 		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
@@ -1080,7 +1105,6 @@ void MACandVIDplus()
 }
 
 
-//void Option_Receive(int D_times, char sop, pcap_t *p_lan, pcap_t *p_wan)
 void Option_Receive(int D_times, char sop)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -1181,20 +1205,18 @@ void Option_Receive(int D_times, char sop)
 		}
 
 		printf("**************************************************\n");
-		printf("--------LAN ------------------------>  WAN--------\n");
+		printf("--------LAN  ==> ==> ==> ==> ==> ==>   WAN--------\n");
 		printf("Discover -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n",CompareFalseTimes);
 		printf("True  : %d\n",CompareTrueTimes);
 		printf("Discover -> Not arrive receive Port packet\n");
-		//printf("Lose Packet : %d\n",D_times - (CompareFalseTimes + CompareTrueTimes));
 		printf("Lose Packet : %d\n",D_times - Receivedocsispkt);
 		printf("\n");
-		printf("--------LAN <------------------------  WAN--------\n");
+		printf("--------LAN  <== <== <== <== <== <==   WAN--------\n");
 		printf("OFFER -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n",CompareFalseTimes_offer);
 		printf("True  : %d\n",CompareTrueTimes_offer);
 		printf("OFFER -> Not arrive receive Port packet\n");
-		//printf("Lose Packet : %d\n",D_times - (CompareFalseTimes_offer + CompareTrueTimes_offer));
 		printf("Lose Packet : %d\n",D_times - Receivepktcpkt);
 		printf("***************************************************\n");
 		printf("\n");
@@ -1204,9 +1226,12 @@ void Option_Receive(int D_times, char sop)
 		CompareTrueTimes = 0;
 		CompareFalseTimes_offer = 0;
 		CompareTrueTimes_offer = 0;
+
+		//Init Lose packet record count
 		Receivedocsispkt = 0;
 		Receivepktcpkt = 0;
-		//LosePacket = 0;
+
+
 		KeepRunning = 0;
 		Running_Times = 0;
 		AutoTesting = 0;
@@ -1388,19 +1413,19 @@ int main(int argc,char *argv[])
 	}*/
 
 	/*Client Socket*/
-	/*pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
+	pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
 	if( pth_socket != 0 )
 	{
 		printf("Create Socket Function Thread Error\n");
 		printf("exit........................\n");
 		exit(1);
-	}*/
+	}
 
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
 	//pthread_join(pthreadProcessStatus, NULL);
-	//pthread_join(pthreadSocketClient, NULL);
+	pthread_join(pthreadSocketClient, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);
