@@ -277,7 +277,12 @@ void ThreadSocket()
 				{
 					printf("Cannot send out to client\n");
 				}
-				recv(clientfd, buffer, sizeof(buffer),0);
+
+				if(recv(clientfd, buffer, sizeof(buffer),0) > 0)
+				{
+					printf("Socket Client was stop the sending loop\n");
+				}
+				
 			}
 			else if(!strcmp(Cmdbuf, "h\n\0"))
 			{
@@ -285,8 +290,10 @@ void ThreadSocket()
 			}
 			else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
-				buffer[5] = 2;
-				send(clientfd,buffer,sizeof(buffer),0);
+				buffer[0] = 0x01;
+				buffer[5] = 0x02;
+				//send(clientfd,buffer,sizeof(buffer),MSG_OOB);
+				send(clientfd,buffer,4,MSG_OOB);
 			}
 			else if(!strcmp(Cmdbuf, "exit\n\0"))
 			{

@@ -390,12 +390,39 @@ void Signal_Stophandler()
 }*/
 
 
+/*socket client test*/
+int clientfd;
+
+/*just for test socket signal SIGURG*/
+static void sigurg(int signo)
+{
+	int n;
+	char buf[128];
+	
+	n = recv(clientfd,buf,sizeof(buf),MSG_OOB);
+	if(n<0)
+	{
+		perror("clientfd");
+	}
+
+	buf[n] = 0;
+	printf("//////////////////////////////////\n");
+	printf("read %d bytes buf OOB : %s\n",n,buf);
+	if(buf[5] == 0x02)
+	{
+		StopLoopRunning = 1;	
+	}
+		
+	signal(SIGURG, sigurg);
+}
+
+
 /*Client socket for use*/
 void ThreadClientSocket()
 {	
 	int GetTimesValue = 0;
 	int GetStartVID = 0;
-	int clientfd;
+	//int clientfd;
 	int res = 0;
 	struct sockaddr_in client_addr;
 	char client_buffer[128];
@@ -431,7 +458,7 @@ void ThreadClientSocket()
 		{
 			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
 			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
-			
+	
 			if((client_buffer[0] != 0) && (client_buffer[5] == 0x01))
 			{
 				AutoTesting = 1;
@@ -464,15 +491,15 @@ void ThreadClientSocket()
 				else if(client_buffer[0] == 2)
 					testmode = '2';
 
-				Option_Receive(0, testmode);
+				client_buffer[5] = 0x01;
+				send(clientfd, client_buffer, 5,0);
 
-				client_buffer[5] = 0x00;
-				send(clientfd, client_buffer, 4,0);
+				Option_Receive(0, testmode);
 			}
-			else if(client_buffer[5] == 0x02)
+			/*else if(client_buffer[5] == 0x02)
 			{
 				StopLoopRunning = 1;	
-			}
+			}*/
 		}
 	}
 	close(clientfd);
@@ -1328,6 +1355,9 @@ int main(int argc,char *argv[])
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
 
+	/*test catch sigurg*/
+	signal(SIGURG, sigurg);
+	
 	if(argc == 3)
 	{
 		/*Set sending packet port and receive port*/
