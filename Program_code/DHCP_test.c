@@ -67,8 +67,39 @@ typedef struct S_IP_HEADER
 
 #define MAC_ADDRSTRLEN 2*6+5+1
 
+
+/*Define Thread**************************/
+/*Send Packet thread*/
+pthread_t pthreadSendPacket;
+
+/*Receive Packet thread*/
+pthread_t pthreadReadLoop;
+
+/*Receive another lan port thread*/
+pthread_t pthreadReadLoopLAN;
+
+/*check process work status*/
+pthread_t pthreadProcessStatus;
+
+/*Thread socket*/
+pthread_t pthreadSocketClient;
+/****************************************/
+
 /*Define use function*/
+void Signal_Stophandler();
+void ThreadClientSocket();
+void Memu(char *);
+char *mac_ntoa(unsigned char *);
+void SVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *);
+void DVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *);
+void dump_ip(ip_header *, int);
+void pcap_handler_func(unsigned char *,const struct pcap_pkthdr *, const unsigned char *);
+void pcap_handler_func_lan(unsigned char *,const struct pcap_pkthdr *, const unsigned char *);
+void read_loop();
+void read_loop_lan();
+void MACandVIDplus();
 void Option_Receive(int, char);
+void send_packet();
 
 
 
@@ -426,16 +457,20 @@ void ThreadClientSocket()
 	int res = 0;
 	struct sockaddr_in client_addr;
 	char client_buffer[128];
+	char sendserver_buffer[128];
 
 	//create socket
-	clientfd = socket(AF_INET, SOCK_STREAM, 0);
+	//clientfd = socket(AF_INET, SOCK_STREAM, 0);
+	clientfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(clientfd < 0)
 	{
 		perror("Open client socket Error\n");
 	}
 	else
+	{
 		printf("Open client socket success\n");
-
+		//send_packet();
+	}
 	//Initialize client socket
 	bzero(&client_addr, sizeof(client_addr));
 	client_addr.sin_family = AF_INET;
@@ -443,19 +478,38 @@ void ThreadClientSocket()
 	client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 	//Connet to server
-	connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
+	//connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
 
-	bzero(client_buffer,128);
+	bind(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+	bzero(client_buffer, 128);
+	bzero(sendserver_buffer, 128);
 
 	char testmode = '0';
+
+	//install CLIENTOPEN command for ready send to socket server 
+	sendserver_buffer[0] = 0x43;
+	sendserver_buffer[1] = 0x4C;
+	sendserver_buffer[2] = 0x49;
+	sendserver_buffer[3] = 0x45;
+	sendserver_buffer[4] = 0x4E;
+	sendserver_buffer[5] = 0x54;
+	sendserver_buffer[6] = 0x4F;
+	sendserver_buffer[7] = 0x50;
+	sendserver_buffer[8] = 0x45;
+	sendserver_buffer[9] = 0x4E;
+
+	//tell socket server , client to connect
+	sendto(clientfd, sendserver_buffer, 10, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
 
 	//Receive message from Server controller
 	for(;;)
 	{
-		res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
+		//res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
+		res = recvfrom(clientfd, client_buffer, sizeof(client_buffer)-1, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
 
-		if(res > 0)
-		{
+		//if(res > -1)
+		//{
 			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
 			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
 	
@@ -492,15 +546,22 @@ void ThreadClientSocket()
 					testmode = '2';
 
 				client_buffer[5] = 0x01;
-				send(clientfd, client_buffer, 5,0);
+				//send(clientfd, client_buffer, 5,0);
+				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
 
 				Option_Receive(0, testmode);
 			}
 			/*else if(client_buffer[5] == 0x02)
 			{
-				StopLoopRunning = 1;	
+				StopLoopRunning = 1;
 			}*/
-		}
+			else if(client_buffer[6] == 0x43 && client_buffer[7] == 0x4C && client_buffer[8] == 0x4F && client_buffer[9] == 0x53 && client_buffer[10] == 0x45)
+			{
+					printf("Socket Server close\n")	;	
+					pthread_cancel(pthreadSocketClient);
+			}
+
+		//}
 	}
 	close(clientfd);
 }
@@ -514,6 +575,7 @@ void Menu(char *mode)
 		printf("1.DVGM MODE\n");
 		printf("2.SVGM MODE\n");
 		printf("3.Exit this Process\n");
+		printf("4.Start Socket Client Thread\n");
 		printf("Ctrl+C --> leave the sending loop\n");
 	}
 	else if( mode == "DVGM" || mode == "SVGM" )
@@ -1279,6 +1341,9 @@ void send_packet()
 	//calculation send dhcp times
 	int DHCPtimes = 0;
 
+	//use in socket client
+	int pth_socket = 0;
+
 	while((buf = fgetc(stdin)) != NULL)
 	{
 		if(buf == '1' || buf == '2')
@@ -1294,6 +1359,19 @@ void send_packet()
 			free(ReceiveBuf_offer);
 			free(SendpktcBuf_offer);
 			exit(0);
+		}
+		else if(buf == '4')
+		{
+			/*Client Socket*/
+			pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
+			if( pth_socket != 0 )
+			{
+				printf("Create Socket Function Thread Error\n");
+				printf("exit........................\n");
+				exit(1);
+			}
+
+			pthread_join(pthreadSocketClient, NULL);
 		}
 	}
 }
@@ -1332,22 +1410,6 @@ void send_packet()
 		printf("Continued\n");
 }*/
 
-
-
-/*Send Packet thread*/
-pthread_t pthreadSendPacket;
-
-/*Receive Packet thread*/
-pthread_t pthreadReadLoop;
-
-/*Receive another lan port thread*/
-pthread_t pthreadReadLoopLAN;
-
-/*check process work status*/
-pthread_t pthreadProcessStatus;
-
-/*Thread socket*/
-pthread_t pthreadSocketClient;
 
 int main(int argc,char *argv[])
 {
@@ -1443,19 +1505,19 @@ int main(int argc,char *argv[])
 	}*/
 
 	/*Client Socket*/
-	pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
+/*	pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
 	if( pth_socket != 0 )
 	{
 		printf("Create Socket Function Thread Error\n");
 		printf("exit........................\n");
 		exit(1);
 	}
-
+*/
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
 	//pthread_join(pthreadProcessStatus, NULL);
-	pthread_join(pthreadSocketClient, NULL);
+//	pthread_join(pthreadSocketClient, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);

@@ -201,12 +201,15 @@ void ThreadSocket()
 {
 	int send_res = 0;
 	int cl_addrlen = sizeof(client_addr);
-	char buffer[128] = {0};
+	int se_addrlen = sizeof(struct sockaddr_in);
+	char buffer[32] = {0};
+	char recvbuffer[32] = {0};
 	
 	int yes = 1;
 
 	//create socket
-	sockfd = socket(PF_INET, SOCK_STREAM, 0);
+	//sockfd = socket(PF_INET, SOCK_STREAM, 0);
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(sockfd < 0)
 	{
 		perror("Opening socket server error\n");
@@ -239,7 +242,7 @@ void ThreadSocket()
 	bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
 	//listen to client to connect
-	listen(sockfd, 20);
+	//listen(sockfd, 20);
 
 	int c = 0;
 	int GetMode = 0;
@@ -248,8 +251,9 @@ void ThreadSocket()
 	{
 		//wait and accept client to connection
 		printf("Waiting for client to connect........................\n");
-		clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
-		if(clientfd < 0)
+		//clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
+		clientfd = recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen);
+		/*if(clientfd < 0)
 		{
 			printf("Client Connect Fail, Please Check it again.......\n");
 			pthread_cancel(pthreadSocketServerRunning);
@@ -259,7 +263,12 @@ void ThreadSocket()
 		{
 			printf("Client Connect Success...........................\n");
 			SetSendClientValue(&buffer[0]);
-		}
+		}*/
+		/*ASCII -> C  L  I  E  N  T  O  P  E  N
+				   43 4C 49 45 4E 54 4F 50 45 4E */
+		if(recvbuffer[0] == 0x43 && recvbuffer[1] == 0x4C && recvbuffer[2] == 0x49 && recvbuffer[3] == 0x45 && recvbuffer[4] == 0x4E && recvbuffer[5] == 0x54 && recvbuffer[6] == 0x4F && recvbuffer[7] == 0x50 && recvbuffer[8] == 0x45 && recvbuffer[9] == 0x4E)
+		{
+			SetSendClientValue(&buffer[0]);
 
 		SocketMenu();
 		while(fgets(Cmdbuf, sizeof(Cmdbuf), stdin)!=NULL)
@@ -273,12 +282,16 @@ void ThreadSocket()
 				buffer[5] = 0x01;
 
 				//sending to client message
-				if(send(clientfd,buffer,sizeof(buffer),0) < 0)
+				//if(send(clientfd,buffer,sizeof(buffer),0) < 0)
+				if(sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen) < 1)
 				{
-					printf("Cannot send out to client\n");
+					//printf("Cannot send out to client\n");
+					perror("sendto");
+					return 1;
 				}
 
-				if(recv(clientfd, buffer, sizeof(buffer),0) > 0)
+				//if(recv(clientfd, buffer, sizeof(buffer),0) > 0)
+				if(recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen) > 1)
 				{
 					printf("Socket Client was stop the sending loop\n");
 				}
@@ -288,23 +301,41 @@ void ThreadSocket()
 			{
 				SocketMenu();
 			}
-			else if(!strcmp(Cmdbuf, "stop\n\0"))
+		/*	else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
 				buffer[0] = 0x01;
 				buffer[5] = 0x02;
 				//send(clientfd,buffer,sizeof(buffer),MSG_OOB);
-				send(clientfd,buffer,4,MSG_OOB);
-			}
+				//send(clientfd,buffer,4,MSG_OOB);
+				sendto(clientfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
+			}*/
 			else if(!strcmp(Cmdbuf, "exit\n\0"))
 			{
+				int i = 0;
+				int j = 0;
+				for(;j<6;j++)
+				{
+					buffer[j] = 0x00;
+				}
 				printf("Socket thread cancel.............. \n");
+				buffer[6] = 0x43;
+				buffer[7] = 0x4C;
+				buffer[8] = 0x4F;
+				buffer[9] = 0x53;
+				buffer[10] = 0x45;
+				//send(clientfd,buffer,11,0);
+				sendto(sockfd,buffer,11,0,(struct sockaddr*)&server_addr,se_addrlen);
 				close(clientfd);
 				close(sockfd);
 				pthread_cancel(pthreadSocketServerRunning);
 				MainMenu();
+
+				//Clear buffer to zero
+				memset(buffer,0,sizeof(buffer));
 			}
 			else
 				printf("No this optins\n");
+		}
 		}
 		close(clientfd);
 	}
