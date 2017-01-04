@@ -208,7 +208,10 @@ void ThreadSocket()
 	int yes = 1;
 
 	//create socket
+	/*tcp socket*/
 	//sockfd = socket(PF_INET, SOCK_STREAM, 0);
+	
+	/*udp socket*/
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(sockfd < 0)
 	{
@@ -241,6 +244,7 @@ void ThreadSocket()
 	//assign a port number to socket
 	bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
+	/*tcp socket*/
 	//listen to client to connect
 	//listen(sockfd, 20);
 
@@ -251,8 +255,12 @@ void ThreadSocket()
 	{
 		//wait and accept client to connection
 		printf("Waiting for client to connect........................\n");
+		
+		/*tcp socket*/
 		//clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
-		clientfd = recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen);
+		
+		/*udp socket*/
+		clientfd = recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
 		/*if(clientfd < 0)
 		{
 			printf("Client Connect Fail, Please Check it again.......\n");
@@ -268,9 +276,23 @@ void ThreadSocket()
 				   43 4C 49 45 4E 54 4F 50 45 4E */
 		if(recvbuffer[0] == 0x43 && recvbuffer[1] == 0x4C && recvbuffer[2] == 0x49 && recvbuffer[3] == 0x45 && recvbuffer[4] == 0x4E && recvbuffer[5] == 0x54 && recvbuffer[6] == 0x4F && recvbuffer[7] == 0x50 && recvbuffer[8] == 0x45 && recvbuffer[9] == 0x4E)
 		{
+			/*Tell client already connect to server
+			ACSII -> S  E  R  V  E  R  O  P  E  N
+					53 45 52  56 45 52 4F 50 45 4E*/
+			recvbuffer[0] = 0x53;
+			recvbuffer[1] = 0x45;
+			recvbuffer[2] = 0x52;
+			recvbuffer[3] = 0x56;
+			recvbuffer[4] = 0x45;
+			recvbuffer[5] = 0x52;
+	
+			/*udp socket*/
+			sendto(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen);
+
+			memset(recvbuffer,0,sizeof(recvbuffer));
 			SetSendClientValue(&buffer[0]);
 
-		SocketMenu();
+			SocketMenu();
 		while(fgets(Cmdbuf, sizeof(Cmdbuf), stdin)!=NULL)
 		{
 			if(!strcmp(Cmdbuf,"auto\n\0"))
@@ -282,16 +304,22 @@ void ThreadSocket()
 				buffer[5] = 0x01;
 
 				//sending to client message
+				/*tcp socket*/
 				//if(send(clientfd,buffer,sizeof(buffer),0) < 0)
-				if(sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen) < 1)
+				/*if(sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen) < 1)
 				{
 					//printf("Cannot send out to client\n");
 					perror("sendto");
 					return 1;
-				}
+				}*/
+				/*udp socket*/
+				sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen);
 
+				/*tcp socket*/
 				//if(recv(clientfd, buffer, sizeof(buffer),0) > 0)
-				if(recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen) > 1)
+
+				/*udp socket*/
+				if(recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen) > 1)
 				{
 					printf("Socket Client was stop the sending loop\n");
 				}
@@ -318,20 +346,28 @@ void ThreadSocket()
 					buffer[j] = 0x00;
 				}
 				printf("Socket thread cancel.............. \n");
+				
+				MainMenu();
+				
 				buffer[6] = 0x43;
 				buffer[7] = 0x4C;
 				buffer[8] = 0x4F;
 				buffer[9] = 0x53;
 				buffer[10] = 0x45;
+				
+				/*tcp socket*/
 				//send(clientfd,buffer,11,0);
-				sendto(sockfd,buffer,11,0,(struct sockaddr*)&server_addr,se_addrlen);
+				
+				/*udp socket*/
+				sendto(sockfd,buffer,11,0,(struct sockaddr*)&client_addr,cl_addrlen);
+				
 				close(clientfd);
 				close(sockfd);
 				pthread_cancel(pthreadSocketServerRunning);
-				MainMenu();
-
+				
 				//Clear buffer to zero
 				memset(buffer,0,sizeof(buffer));
+				
 			}
 			else
 				printf("No this optins\n");
@@ -366,7 +402,15 @@ void SetSendClientValue(int *mode)
 {
 	printf("Set Value Sending to client for auto test:\n");
 	printf("Enter Test Mode (DVGM/SVGM): \n");
-	scanf("%s",&vlan_mode);
+	
+	if((scanf("%s",&vlan_mode) == 1))
+	{
+		if((strcmp(vlan_mode,"DVGM") != 0) || (strcmp(vlan_mode,"SVGM") != 0))
+		{
+			fflush(stdin);
+			printf("Enter wrong , please try again\n");
+		}
+	}
 	if(!strcmp(vlan_mode,"DVGM"))
 		*mode = 1;
 	else if(!strcmp(vlan_mode,"SVGM"))
@@ -378,6 +422,11 @@ void SetSendClientValue(int *mode)
 	printf("Enter Start VID : \n");
 	if(scanf("%d",&StartVID) != 1)
 	{	
-		printf("Enter the wrong\n");
+		printf("Enter the wrong, the VID have begin 2049\n");
+		StartVID = 2049;
+	}
+	else if(StartVID < 2049 || StartVID > 2512)
+	{
+			StartVID = 2049;
 	}
 }

@@ -456,11 +456,16 @@ void ThreadClientSocket()
 	//int clientfd;
 	int res = 0;
 	struct sockaddr_in client_addr;
+	struct sockaddr_in server_addr;
+	int cl_addr = sizeof(struct sockaddr_in);
 	char client_buffer[128];
 	char sendserver_buffer[128];
 
 	//create socket
+	/*tcp socket*/
 	//clientfd = socket(AF_INET, SOCK_STREAM, 0);
+	
+	/*udp socket*/
 	clientfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(clientfd < 0)
 	{
@@ -475,12 +480,14 @@ void ThreadClientSocket()
 	bzero(&client_addr, sizeof(client_addr));
 	client_addr.sin_family = AF_INET;
 	client_addr.sin_port = htons(9998);
-	client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	inet_pton(AF_INET, "127.0.0.1", &client_addr.sin_addr.s_addr);
 
+	/*tcp socket */
 	//Connet to server
 	//connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
 
-	bind(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
+	//bind(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
 
 	bzero(client_buffer, 128);
 	bzero(sendserver_buffer, 128);
@@ -502,14 +509,23 @@ void ThreadClientSocket()
 	//tell socket server , client to connect
 	sendto(clientfd, sendserver_buffer, 10, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
 
+	sleep(1);
+	recvfrom(clientfd, sendserver_buffer, sizeof(sendserver_buffer)-1, 0, (struct sockaddr *)&server_addr,&cl_addr);
+	if(sendserver_buffer[0] == 0x53 && sendserver_buffer[1] == 0x45 && sendserver_buffer[2] == 0x52 && sendserver_buffer[3] == 0x56 && sendserver_buffer[4] == 0x45 && sendserver_buffer[5] == 0x52 && sendserver_buffer[6] == 0x4F && sendserver_buffer[7] == 0x50 && sendserver_buffer[8] == 0x45 && sendserver_buffer[9] == 0x4E)
+		{
+			printf("Connect to Server\n");
+			memset(sendserver_buffer,0,sizeof(sendserver_buffer));
+		}
+	
 	//Receive message from Server controller
 	for(;;)
 	{
+		/*tcp socket*/
 		//res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
-		res = recvfrom(clientfd, client_buffer, sizeof(client_buffer)-1, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
+		/*udp socket*/
+		res = recvfrom(clientfd, client_buffer, sizeof(client_buffer)-1, 0, (struct sockaddr *)&server_addr,&cl_addr);
+		
 
-		//if(res > -1)
-		//{
 			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
 			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
 	
@@ -560,8 +576,6 @@ void ThreadClientSocket()
 					printf("Socket Server close\n")	;	
 					pthread_cancel(pthreadSocketClient);
 			}
-
-		//}
 	}
 	close(clientfd);
 }
@@ -576,6 +590,7 @@ void Menu(char *mode)
 		printf("2.SVGM MODE\n");
 		printf("3.Exit this Process\n");
 		printf("4.Start Socket Client Thread\n");
+		printf("h.User MENU show\n");
 		printf("Ctrl+C --> leave the sending loop\n");
 	}
 	else if( mode == "DVGM" || mode == "SVGM" )
@@ -1370,8 +1385,12 @@ void send_packet()
 				printf("exit........................\n");
 				exit(1);
 			}
-
+			send_packet();
 			pthread_join(pthreadSocketClient, NULL);
+		}
+		else if(buf == 'h' || buf == 'H')
+		{
+			Menu("default");
 		}
 	}
 }
