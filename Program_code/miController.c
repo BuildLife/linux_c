@@ -403,14 +403,18 @@ void SetSendClientValue(int *mode)
 	printf("Set Value Sending to client for auto test:\n");
 	printf("Enter Test Mode (DVGM/SVGM): \n");
 	
-	if((scanf("%s",&vlan_mode) == 1))
-	{
-		if((strcmp(vlan_mode,"DVGM") != 0) || (strcmp(vlan_mode,"SVGM") != 0))
+	do{
+		if(scanf("%s",&vlan_mode) != 1)
 		{
-			fflush(stdin);
-			printf("Enter wrong , please try again\n");
+			printf("Please at least enter a mode(DVGM/SVGM)\n");
 		}
-	}
+		else if(strcmp(vlan_mode,"DVGM") != 0 && strcmp(vlan_mode,"SVGM") != 0)
+		{
+			printf("Please Enter the right word(DVGM/SVGM)\n");
+		}
+
+	}while(strcmp(vlan_mode,"DVGM") != 0 && strcmp(vlan_mode,"SVGM") != 0);
+
 	if(!strcmp(vlan_mode,"DVGM"))
 		*mode = 1;
 	else if(!strcmp(vlan_mode,"SVGM"))
