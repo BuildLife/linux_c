@@ -214,8 +214,8 @@ void ThreadCmcControl()
 		printf("set mode ok\n");
 	//}
 	tcsetattr(fd,TCSANOW,&oldtio);
-	//if(close(fd) == -1)
-	//	perror("close");
+	if(fd)
+		close(fd);
 
 }
 
