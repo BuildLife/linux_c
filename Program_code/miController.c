@@ -104,6 +104,10 @@ int main(int argc,char *argv[])
 		{
 			MainMenu();
 		}
+		else if(!strcmp(MainBuffer, "usb\n\0") || !strcmp(MainBuffer, "USB\n\0"))
+		{
+			ThreadCmcControl();
+		}
 		else if(!strcmp(MainBuffer, "exit\n\0"))
 		{
 			exit(0);
@@ -118,18 +122,12 @@ int main(int argc,char *argv[])
 void ThreadCmcControl()
 {
 	int fd, c, res, wes;
-	struct termio options;
+	struct termio options,oldtio;
 	char buf[255];
 	char *w_buf = "configure terminal\n";
 	char w_o_buf[255] = {0};
 
 	memset(w_o_buf, 0, sizeof(w_o_buf));
-
-	if(!strcmp(vlan_mode,"DVGM"))
-		sprintf(w_o_buf,"vlan rule disable\n");
-	else if(!strcmp(vlan_mode,"SVGM"))
-		sprintf(w_o_buf,"vlan rule enable\n");
-	
 
 	fd = open(MAPDEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if( fd < 0 )
@@ -181,24 +179,50 @@ void ThreadCmcControl()
 	// Enable the new setting right now
 	tcsetattr(fd, TCSANOW, &options);
 
+	sprintf(vlan_mode,"DVGM");
+	sleep(2);
 	write(fd, "\n",1);
-	sleep(1);
 
-	while(STOP == FALSE)
-	{
+	sleep(1);
+	if(!strcmp(vlan_mode,"DVGM"))
+		sprintf(w_o_buf,"vlan rule disable\n");
+	else if(!strcmp(vlan_mode,"SVGM"))
+		sprintf(w_o_buf,"vlan rule enable\n");
+
+	//while(STOP == FALSE)
+	//{
 		res = read(fd, buf, 255);
 		sleep(1);
 		buf[res] = 0;
-		printf(":%s\n",buf);
+		//printf(":%s\n",buf);
 		write(fd,w_o_buf,sizeof(w_o_buf));
-		sleep(2);
-	}
+		sleep(5);
+			printf("Enter in %s mode\n",vlan_mode);
+		/*if(strcmp(vlan_mode,"DVGM") == 0 || strcmp(vlan_mode,"SVGM") == 0)
+		{
+			printf("Enter in %s mode\n",vlan_mode);
+			if(strcmp(w_o_buf, "vlan rule disable\n") == 0 || strcmp(w_o_buf, "vlan rule enable\n") == 0)
+			{
+				printf("Enter in Command %s\n",w_o_buf);
+				//STOP = TRUE;
+		////		pthread_cancel(pthreadComPort);
+		//		pthread_exit((void*)ThreadCmcControl);
+			//	pthread_detach(pthreadComPort);
+			}
+
+		}*/
+		printf("set mode ok\n");
+	//}
+	tcsetattr(fd,TCSANOW,&oldtio);
+	//if(close(fd) == -1)
+	//	perror("close");
 
 }
 
 
 void ThreadSocket()
 {
+	int pth_usbport = 0;
 	int send_res = 0;
 	int cl_addrlen = sizeof(client_addr);
 	int se_addrlen = sizeof(struct sockaddr_in);
@@ -290,13 +314,26 @@ void ThreadSocket()
 			sendto(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen);
 
 			memset(recvbuffer,0,sizeof(recvbuffer));
-			SetSendClientValue(&buffer[0]);
+			//SetSendClientValue(&buffer[0]);
 
 			SocketMenu();
 		while(fgets(Cmdbuf, sizeof(Cmdbuf), stdin)!=NULL)
 		{
 			if(!strcmp(Cmdbuf,"auto\n\0"))
 			{
+				SetSendClientValue(&buffer[0]);
+				sleep(2);
+				/*Enter in thread USB COMPORT*/
+				ThreadCmcControl();
+				/*pth_usbport = pthread_create(&pthreadComPort, NULL, (void*)ThreadCmcControl, NULL);
+				if(pth_usbport < 0)
+				{
+					printf("Create USB Control server Error\n");
+					exit(1);
+				}*/
+	//			pthread_join(pthreadComPort,NULL);
+
+				sleep(2);
 				buffer[1] = (Runtimes >> 8) & 0xff;
 				buffer[2] = (Runtimes) & 0xff;
 				buffer[3] = (StartVID >> 8) & 0xff;
@@ -423,7 +460,7 @@ void SetSendClientValue(int *mode)
 	printf("Enter Running Times or 0 Keeping the loop running: \n");
 	scanf("%d",&Runtimes);
 
-	printf("Enter Start VID : \n");
+	printf("Enter Start VID(2049 ~ 2512) : \n");
 	if(scanf("%d",&StartVID) != 1)
 	{	
 		printf("Enter the wrong, the VID have begin 2049\n");
@@ -431,6 +468,7 @@ void SetSendClientValue(int *mode)
 	}
 	else if(StartVID < 2049 || StartVID > 2512)
 	{
-			StartVID = 2049;
+		printf("Enter the VID out of the range, so the VID start on 2049\n");
+		StartVID = 2049;
 	}
 }
