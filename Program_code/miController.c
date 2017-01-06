@@ -3,7 +3,7 @@
 
 #define BAUDRATE B38400
 #define MAPDEVICE "/dev/ttyUSB0"
-#define _POSIX_SOURCE 1
+#define _POSIX_SOURCE 1 /*Match with POSIX system*/
 
 #define FALSE 0
 #define TRUE 1
@@ -122,29 +122,28 @@ int main(int argc,char *argv[])
 void ThreadCmcControl()
 {
 	int fd, c, res, wes;
-	struct termio options,oldtio;
+	struct termios options,oldtio;
 	char buf[255];
 	char *w_buf = "configure terminal\n";
 	char w_o_buf[255] = {0};
 
 	memset(w_o_buf, 0, sizeof(w_o_buf));
-
 	fd = open(MAPDEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if( fd < 0 )
 	{
 		perror(MAPDEVICE);
-		//exit(-1);
 	}
 	
 	fcntl(fd, F_SETFL, FNDELAY);
 
+	tcgetattr(fd,&oldtio);
 	//Get the original setting
 	tcgetattr(fd,&options);
-
+	bzero(&options, sizeof(options));
 	// Setting the Baudrate
 	cfsetispeed(&options,BAUDRATE);
 	cfsetospeed(&options,BAUDRATE);
-
+	
 	//enable the receiver and set local mode
 	options.c_cflag |= (CLOCAL|CREAD);
 
@@ -156,22 +155,27 @@ void ThreadCmcControl()
 	options.c_cflag &= ~PARENB;
 	options.c_cflag &= ~CSTOPB;
 
+	//Clear the HUPCL bit
+	options.c_cflag &= ~HUPCL;
+
 	// Disable Hardware flow control
 	options.c_cflag &= ~CRTSCTS;
 
 	// Disable Input Parity Checking
-	options.c_iflag &= ~INPCK;
+	//options.c_iflag &= ~INPCK;
+	options.c_iflag |= (INPCK | ISTRIP);
 
 	// Disable software flow control
 	options.c_iflag &= ~(IXON|IXOFF|IXANY);
 
-	options.c_iflag &= ~(IGNPAR|ICRNL);
+	//options.c_iflag &= ~(IGNPAR|ICRNL);
 
 	// Output raw data
 	options.c_oflag &= ~OPOST;
 
 	// Disablestd input 
 	options.c_lflag &= ~(ICANON|ECHO|ECHOE|ISIG);
+	//options.c_lflag &= ~(ICANON|ECHO|ISIG);
 
 	// clean the current setting
 	tcflush(fd, TCIFLUSH);
@@ -179,9 +183,26 @@ void ThreadCmcControl()
 	// Enable the new setting right now
 	tcsetattr(fd, TCSANOW, &options);
 
-	sprintf(vlan_mode,"DVGM");
+	/*test for rts*/
+	/*int status;
+	ioctl(fd, TIOCMGET, &status);
+	printf("status = %04x\n",status);
+
+	//status &= ~TIOCM_DTR; //set DTR line
+	//status |= TIOCM_DTR;  //DTR low
+
+	//status &= ~TIOCM_RTS;  //RTS high 
+	//status |= TIOCM_RTS;  //RTS low
+
+	printf("status = %04x\n",status);
+	ioctl(fd, TIOCMSET, &status);
+	ioctl(fd, TIOCMGET, &status);
+	printf("status = %04x\n",status);
+	*/
+	
+	//sprintf(vlan_mode,"DVGM");
 	sleep(2);
-	write(fd, "\n",1);
+	write(fd, '\n',1);
 
 	sleep(1);
 	if(!strcmp(vlan_mode,"DVGM"))
@@ -189,34 +210,31 @@ void ThreadCmcControl()
 	else if(!strcmp(vlan_mode,"SVGM"))
 		sprintf(w_o_buf,"vlan rule enable\n");
 
-	//while(STOP == FALSE)
-	//{
+
+	while(STOP == FALSE)
+	{
 		res = read(fd, buf, 255);
 		sleep(1);
 		buf[res] = 0;
-		//printf(":%s\n",buf);
+		printf("%s\n",buf);
+		if(buf == "Controller-cfg#")
+		{			
+				printf("Enter to the Configure terminal\n");
+		}	
 		write(fd,w_o_buf,sizeof(w_o_buf));
 		sleep(5);
-			printf("Enter in %s mode\n",vlan_mode);
-		/*if(strcmp(vlan_mode,"DVGM") == 0 || strcmp(vlan_mode,"SVGM") == 0)
-		{
-			printf("Enter in %s mode\n",vlan_mode);
-			if(strcmp(w_o_buf, "vlan rule disable\n") == 0 || strcmp(w_o_buf, "vlan rule enable\n") == 0)
-			{
-				printf("Enter in Command %s\n",w_o_buf);
-				//STOP = TRUE;
-		////		pthread_cancel(pthreadComPort);
-		//		pthread_exit((void*)ThreadCmcControl);
-			//	pthread_detach(pthreadComPort);
-			}
-
-		}*/
+		printf("Enter in %s mode\n",vlan_mode);
+		STOP = TRUE;
 		printf("set mode ok\n");
-	//}
-	tcsetattr(fd,TCSANOW,&oldtio);
-	if(fd)
-		close(fd);
+	}
 
+	if(fd)
+	{
+		printf("Close the USB Com Port\n");
+		close(fd);
+	}
+	tcgetattr(fd,&oldtio);
+	STOP = FALSE;
 }
 
 
