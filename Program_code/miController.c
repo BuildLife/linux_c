@@ -59,32 +59,6 @@ int main(int argc,char *argv[])
 
 	char MainBuffer[32];
 
-	/*if(argc == 4)
-	{
-		vlan_mode = argv[1];
-		Runtimes = atoi(argv[2]);
-		Autotest = atoi(argv[3]);
-	}*/
-
-	/*Enter in thread USB COMPORT*/
-	/*pth_usbport = pthread_create(&pthreadComPort, NULL, (void*)ThreadCmcControl, NULL);
-	if(pth_usbport < 0)
-	{
-		printf("Create Socket server Error\n");
-		exit(1);
-	}*/
-
-	/*Enter in thread socket server*/
-	/*pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
-	if(pth_socserver < 0)
-	{
-		printf("Create Socket server Error\n");
-		exit(1);
-	}*/
-
-	//pthread_join(pthreadComPort, NULL);
-	//pthread_join(pthreadSocketServerRunning, NULL);
-
 	MainMenu();
 
 	while(fgets(MainBuffer, sizeof(MainBuffer), stdin) != NULL)
@@ -104,6 +78,7 @@ int main(int argc,char *argv[])
 		{
 			MainMenu();
 		}
+		// only for testing 
 		else if(!strcmp(MainBuffer, "usb\n\0") || !strcmp(MainBuffer, "USB\n\0"))
 		{
 			ThreadCmcControl();
@@ -122,12 +97,14 @@ int main(int argc,char *argv[])
 void ThreadCmcControl()
 {
 	int fd, c, res, wes;
-	struct termios options,oldtio;
+	struct termios options,oldtio; //Notice that struct "termios" NOT termio 
 	char buf[255];
 	char *w_buf = "configure terminal\n";
 	char w_o_buf[255] = {0};
 
+	//clear w_o_buf to zero
 	memset(w_o_buf, 0, sizeof(w_o_buf));
+
 	fd = open(MAPDEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if( fd < 0 )
 	{
@@ -136,7 +113,9 @@ void ThreadCmcControl()
 	
 	fcntl(fd, F_SETFL, FNDELAY);
 
+	//set USB Comport default values
 	tcgetattr(fd,&oldtio);
+
 	//Get the original setting
 	tcgetattr(fd,&options);
 	bzero(&options, sizeof(options));
@@ -182,26 +161,9 @@ void ThreadCmcControl()
 
 	// Enable the new setting right now
 	tcsetattr(fd, TCSANOW, &options);
-
-	/*test for rts*/
-	/*int status;
-	ioctl(fd, TIOCMGET, &status);
-	printf("status = %04x\n",status);
-
-	//status &= ~TIOCM_DTR; //set DTR line
-	//status |= TIOCM_DTR;  //DTR low
-
-	//status &= ~TIOCM_RTS;  //RTS high 
-	//status |= TIOCM_RTS;  //RTS low
-
-	printf("status = %04x\n",status);
-	ioctl(fd, TIOCMSET, &status);
-	ioctl(fd, TIOCMGET, &status);
-	printf("status = %04x\n",status);
-	*/
 	
 	//sprintf(vlan_mode,"DVGM");
-	sleep(2);
+	sleep(1);
 	write(fd, '\n',1);
 
 	sleep(1);
@@ -233,7 +195,11 @@ void ThreadCmcControl()
 		printf("Close the USB Com Port\n");
 		close(fd);
 	}
+	
+	//set USB Comport to default values
 	tcgetattr(fd,&oldtio);
+
+	//let USB Comport can running while loop
 	STOP = FALSE;
 }
 
@@ -384,14 +350,14 @@ void ThreadSocket()
 			{
 				SocketMenu();
 			}
-		/*	else if(!strcmp(Cmdbuf, "stop\n\0"))
+			else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
-				buffer[0] = 0x01;
-				buffer[5] = 0x02;
-				//send(clientfd,buffer,sizeof(buffer),MSG_OOB);
-				//send(clientfd,buffer,4,MSG_OOB);
-				sendto(clientfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
-			}*/
+				recvbuffer[0] = 0x53;
+				recvbuffer[1] = 0x54;
+				recvbuffer[2] = 0x4F;
+				recvbuffer[3] = 0x50;
+				sendto(clientfd,recvbuffer,4,0,(struct sockaddr*)&client_addr,&cl_addrlen);
+			}
 			else if(!strcmp(Cmdbuf, "exit\n\0"))
 			{
 				int i = 0;

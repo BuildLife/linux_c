@@ -474,7 +474,6 @@ void ThreadClientSocket()
 	else
 	{
 		printf("Open client socket success\n");
-		//send_packet();
 	}
 	//Initialize client socket
 	bzero(&client_addr, sizeof(client_addr));
@@ -516,6 +515,7 @@ void ThreadClientSocket()
 			printf("Connect to Server\n");
 			memset(sendserver_buffer,0,sizeof(sendserver_buffer));
 		}
+		
 	
 	//Receive message from Server controller
 	for(;;)
@@ -567,10 +567,10 @@ void ThreadClientSocket()
 
 				Option_Receive(0, testmode);
 			}
-			/*else if(client_buffer[5] == 0x02)
+			else if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
 			{
 				StopLoopRunning = 1;
-			}*/
+			}
 			else if(client_buffer[6] == 0x43 && client_buffer[7] == 0x4C && client_buffer[8] == 0x4F && client_buffer[9] == 0x53 && client_buffer[10] == 0x45)
 			{
 					printf("Socket Server close\n")	;	
