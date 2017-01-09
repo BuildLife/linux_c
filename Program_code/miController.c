@@ -135,14 +135,14 @@ void ThreadCmcControl()
 	options.c_cflag &= ~CSTOPB;
 
 	//Clear the HUPCL bit
-	options.c_cflag &= ~HUPCL;
+	//options.c_cflag &= ~HUPCL;
 
 	// Disable Hardware flow control
 	options.c_cflag &= ~CRTSCTS;
 
 	// Disable Input Parity Checking
-	//options.c_iflag &= ~INPCK;
-	options.c_iflag |= (INPCK | ISTRIP);
+	options.c_iflag &= ~INPCK;
+	//options.c_iflag |= (INPCK | ISTRIP);
 
 	// Disable software flow control
 	options.c_iflag &= ~(IXON|IXOFF|IXANY);
@@ -151,6 +151,8 @@ void ThreadCmcControl()
 
 	// Output raw data
 	options.c_oflag &= ~OPOST;
+	//Enable output raw data
+	//options.c_oflag |= OPOST | ONLCR;
 
 	// Disablestd input 
 	options.c_lflag &= ~(ICANON|ECHO|ECHOE|ISIG);
@@ -164,30 +166,53 @@ void ThreadCmcControl()
 	
 	//sprintf(vlan_mode,"DVGM");
 	sleep(1);
-	write(fd, '\n',1);
+	//write(fd, " \n",2);
+	write(fd,"root\n",5);
 
 	sleep(1);
 	if(!strcmp(vlan_mode,"DVGM"))
 		sprintf(w_o_buf,"vlan rule disable\n");
 	else if(!strcmp(vlan_mode,"SVGM"))
 		sprintf(w_o_buf,"vlan rule enable\n");
-
-
+	
+	int runtimes = 0;
+	
 	while(STOP == FALSE)
 	{
 		res = read(fd, buf, 255);
 		sleep(1);
-		buf[res] = 0;
+		buf[res] = '\0';
 		printf("%s\n",buf);
-		if(buf == "Controller-cfg#")
-		{			
-				printf("Enter to the Configure terminal\n");
-		}	
-		write(fd,w_o_buf,sizeof(w_o_buf));
-		sleep(5);
-		printf("Enter in %s mode\n",vlan_mode);
-		STOP = TRUE;
-		printf("set mode ok\n");
+		
+		if(strstr(buf,"login: "))
+		{
+			write(fd,"root\n",5);
+			sleep(1);
+		}
+
+		if(strstr(buf,"Password:"))
+		{
+			write(fd,"admin\n",6);
+			sleep(1);
+		}
+
+		if(strstr(buf,"Controller#"))
+		{
+			write(fd,"configure terminal\n",20);
+			sleep(1);
+		}
+		if(strstr(buf,"Controller-cfg#"))
+		{
+			write(fd,w_o_buf,sizeof(w_o_buf));
+		}
+		sleep(2);
+		runtimes++;
+		if(runtimes > 4)
+		{
+			printf("Enter in %s mode\n",vlan_mode);
+			printf("set mode ok\n");
+			STOP = TRUE;
+		}
 	}
 
 	if(fd)
