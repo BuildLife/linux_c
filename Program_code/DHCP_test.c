@@ -15,6 +15,7 @@
 #include <memory.h>
 
 /*socket include*/
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
@@ -423,6 +424,11 @@ void Signal_Stophandler()
 
 /*socket client test*/
 int clientfd;
+struct sockaddr_in client_addr;
+struct sockaddr_in server_addr;
+int cl_addr = sizeof(struct sockaddr_in);
+char client_buffer[128];
+char sendserver_buffer[128];
 
 /*just for test socket signal SIGURG*/
 static void sigurg(int signo)
@@ -453,14 +459,15 @@ void ThreadClientSocket()
 {	
 	int GetTimesValue = 0;
 	int GetStartVID = 0;
+	fd_set rfds;
 	//int clientfd;
 	int res = 0;
-	struct sockaddr_in client_addr;
+/*	struct sockaddr_in client_addr;
 	struct sockaddr_in server_addr;
 	int cl_addr = sizeof(struct sockaddr_in);
 	char client_buffer[128];
 	char sendserver_buffer[128];
-
+*/
 	//create socket
 	/*tcp socket*/
 	//clientfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -520,6 +527,10 @@ void ThreadClientSocket()
 	//Receive message from Server controller
 	for(;;)
 	{
+		FD_ZERO(&rfds);
+		FD_SET(clientfd, &rfds);
+		if(select(clientfd+1, &rfds, NULL,NULL,NULL)) {
+			if(FD_ISSET(clientfd, &rfds)) {
 		/*tcp socket*/
 		//res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
 		/*udp socket*/
@@ -561,23 +572,29 @@ void ThreadClientSocket()
 				else if(client_buffer[0] == 2)
 					testmode = '2';
 
-				client_buffer[5] = 0x01;
+				//client_buffer[5] = 0x01;
 				//send(clientfd, client_buffer, 5,0);
-				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
+				//sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
 
 				Option_Receive(0, testmode);
-			}
-			else if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
-			{
-				StopLoopRunning = 1;
+
+				client_buffer[0] = 0x53;
+				client_buffer[1] = 0x54;
+				client_buffer[2] = 0x4F;
+				client_buffer[3] = 0x50;
+				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
+
 			}
 			else if(client_buffer[6] == 0x43 && client_buffer[7] == 0x4C && client_buffer[8] == 0x4F && client_buffer[9] == 0x53 && client_buffer[10] == 0x45)
 			{
 					printf("Socket Server close\n")	;	
 					pthread_cancel(pthreadSocketClient);
 			}
+			}
+		}
 	}
 	close(clientfd);
+	FD_CLR(clientfd,&rfds);
 }
 
 
@@ -1253,6 +1270,7 @@ void Option_Receive(int D_times, char sop)
 
 			if(Random_send >= 1 && Random_send < 50)
 			{
+	//		recvfrom(clientfd, client_buffer, sizeof(client_buffer)-1, 0, (struct sockaddr *)&server_addr,&cl_addr);
 				DHCPBufMode = "docsis";
 
 				pthread_mutex_lock(&pcap_send_mutex);
@@ -1293,6 +1311,10 @@ void Option_Receive(int D_times, char sop)
 				}
 
 				pthread_mutex_unlock(&pcap_send_mutex);
+			}
+			if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
+			{
+				StopLoopRunning = 1;
 			}
 			sleep(1);
 

@@ -2,7 +2,7 @@
  
 
 #define BAUDRATE B38400
-#define MAPDEVICE "/dev/ttyUSB0"
+//#define MAPDEVICE "/dev/ttyUSB0"
 #define _POSIX_SOURCE 1 /*Match with POSIX system*/
 
 #define FALSE 0
@@ -10,6 +10,7 @@
 
 
 //char *vlan_mode = "default";
+char *MAPDEVICE = "/dev/ttyUSB0";
 char vlan_mode[32] = {0};
 int Runtimes = 0, Autotest = 0;
 int StartVID = 0;
@@ -56,14 +57,18 @@ int main(int argc,char *argv[])
 	int pth_socserver = 0, pth_usbport = 0;
 	//signal(SIGINT,&StopSignal);
 	//signal(SIGALARM,);
-
+	if(argc == 2)
+	{
+		MAPDEVICE = argv[1];
+	}
+	
 	char MainBuffer[32];
 
 	MainMenu();
 
 	while(fgets(MainBuffer, sizeof(MainBuffer), stdin) != NULL)
 	{
-		if(!strcmp(MainBuffer, "socket\n\0"))
+		if(!strcmp(MainBuffer, "socket\n\0") || !strcmp(MainBuffer, "SOCKET\n\0"))
 		{
 			pth_socserver = pthread_create(&pthreadSocketServerRunning, NULL, (void*)ThreadSocket, NULL);
 			if(pth_socserver < 0)
@@ -74,7 +79,7 @@ int main(int argc,char *argv[])
 			pthread_join(pthreadSocketServerRunning, NULL);
 			
 		}
-		else if(!strcmp(MainBuffer, "h\n\0"))
+		else if(!strcmp(MainBuffer, "h\n\0") || !strcmp(MainBuffer, "H\n\0"))
 		{
 			MainMenu();
 		}
@@ -83,7 +88,7 @@ int main(int argc,char *argv[])
 		{
 			ThreadCmcControl();
 		}
-		else if(!strcmp(MainBuffer, "exit\n\0"))
+		else if(!strcmp(MainBuffer, "exit\n\0") || !strcmp(MainBuffer, "EXIT\n\0"))
 		{
 			exit(0);
 		}
@@ -166,7 +171,6 @@ void ThreadCmcControl()
 	
 	//sprintf(vlan_mode,"DVGM");
 	sleep(1);
-	//write(fd, " \n",2);
 	write(fd,"root\n",5);
 
 	sleep(1);
@@ -238,6 +242,8 @@ void ThreadSocket()
 	char buffer[32] = {0};
 	char recvbuffer[32] = {0};
 	
+	fd_set rfds;
+
 	int yes = 1;
 
 	//create socket
@@ -254,7 +260,6 @@ void ThreadSocket()
 	else
 	{
 		printf("Opening socket sever Success\n");
-		//SocketMenu();
 	}
 	//initiallze structure
 	bzero(&server_addr, sizeof(server_addr));
@@ -286,12 +291,16 @@ void ThreadSocket()
 	char Cmdbuf[64];
 	while(1)
 	{
+		FD_ZERO(&rfds);
+		FD_SET(sockfd, &rfds);
+		FD_SET(clientfd, &rfds);
 		//wait and accept client to connection
 		printf("Waiting for client to connect........................\n");
 		
 		/*tcp socket*/
 		//clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
-		
+		if(select(sockfd+1, &rfds, NULL, NULL, NULL)) {
+			if(FD_ISSET(sockfd, &rfds)) {
 		/*udp socket*/
 		clientfd = recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
 		/*if(clientfd < 0)
@@ -328,11 +337,12 @@ void ThreadSocket()
 			SocketMenu();
 		while(fgets(Cmdbuf, sizeof(Cmdbuf), stdin)!=NULL)
 		{
-			if(!strcmp(Cmdbuf,"auto\n\0"))
+			if(!strcmp(Cmdbuf,"auto\n\0") || !strcmp(Cmdbuf, "AUTO\n\0"))
 			{
 				SetSendClientValue(&buffer[0]);
 				sleep(2);
 				/*Enter in thread USB COMPORT*/
+				printf("Connect Controller and start to set %s mode\n", vlan_mode);
 				ThreadCmcControl();
 				/*pth_usbport = pthread_create(&pthreadComPort, NULL, (void*)ThreadCmcControl, NULL);
 				if(pth_usbport < 0)
@@ -352,38 +362,39 @@ void ThreadSocket()
 				//sending to client message
 				/*tcp socket*/
 				//if(send(clientfd,buffer,sizeof(buffer),0) < 0)
-				/*if(sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&server_addr,se_addrlen) < 1)
-				{
-					//printf("Cannot send out to client\n");
-					perror("sendto");
-					return 1;
-				}*/
+				
 				/*udp socket*/
-				sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen);
+				if(sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen) > 0)
+				{
+					printf("Sending to client Success, Start to test\n");
+				}
+				else
+					printf("Sending to client failed................\n");
 
 				/*tcp socket*/
 				//if(recv(clientfd, buffer, sizeof(buffer),0) > 0)
 
 				/*udp socket*/
-				if(recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen) > 1)
-				{
-					printf("Socket Client was stop the sending loop\n");
-				}
-				
+			//	recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
 			}
-			else if(!strcmp(Cmdbuf, "h\n\0"))
+			else if(!strcmp(Cmdbuf, "h\n\0") || !strcmp(Cmdbuf, "H\n\0"))
 			{
 				SocketMenu();
 			}
 			else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
+				recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
+				if(recvbuffer[0] == 0x53 && recvbuffer[1] == 0x54 && recvbuffer[2] == 0x4F && recvbuffer[3] == 0x50)
+				{
+					printf("Client have been STOP\n");
+				}
 				recvbuffer[0] = 0x53;
 				recvbuffer[1] = 0x54;
 				recvbuffer[2] = 0x4F;
 				recvbuffer[3] = 0x50;
-				sendto(clientfd,recvbuffer,4,0,(struct sockaddr*)&client_addr,&cl_addrlen);
+				//sendto(clientfd,recvbuffer,4,0,(struct sockaddr*)&client_addr,&cl_addrlen);
 			}
-			else if(!strcmp(Cmdbuf, "exit\n\0"))
+			else if(!strcmp(Cmdbuf, "exit\n\0") || !strcmp(Cmdbuf, "EXIT\n\0"))
 			{
 				int i = 0;
 				int j = 0;
@@ -415,22 +426,26 @@ void ThreadSocket()
 				memset(buffer,0,sizeof(buffer));
 				
 			}
-			else
-				printf("No this optins\n");
-		}
-		}
+			//else
+			//	printf("No this optins\n");
+		} //while fgets
+		} //if client open command
 		close(clientfd);
-	}
+		FD_CLR(clientfd, &rfds);
+		}//FD_ISSET
+		} //select()
+	}// while(1)
 	close(sockfd);
+	FD_CLR(sockfd, &rfds);
 }
 
 //Show Main User Menu to use
 void MainMenu()
 {
 	printf("*********** Main User Menu **********\n");
-	printf("Opening Socket Server for Ready to auto test: socket\n");
-	printf("Safe leave this Main program : exit\n");
-	printf("Show Main Menu : h\n");
+	printf("Opening Socket Server for Ready to auto test: socket or SOCKET\n");
+	printf("Safe leave this Main program : exit or EXIT\n");
+	printf("Show Main Menu : h or H\n");
 	printf("*************************************\n");
 }
 
@@ -438,9 +453,9 @@ void MainMenu()
 void SocketMenu()
 {
 	printf("*********** Socket User Menu **********\n");
-	printf("Sending auto test command : auto\n");
-	printf("Leave the Socket Serve thread Function : exit\n");
-	printf("Show Socket Menu : h\n");
+	printf("Sending auto test command : auto or AUTO\n");
+	printf("Leave the Socket Serve thread Function : exit or EXIT\n");
+	printf("Show Socket Menu : h or H\n");
 	printf("***************************************\n");
 }
 
