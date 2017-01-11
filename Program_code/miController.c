@@ -12,6 +12,7 @@
 //char *vlan_mode = "default";
 char *MAPDEVICE = "/dev/ttyUSB0";
 char vlan_mode[32] = {0};
+char MainBuffer[32];
 int Runtimes = 0, Autotest = 0;
 int StartVID = 0;
 
@@ -62,7 +63,7 @@ int main(int argc,char *argv[])
 		MAPDEVICE = argv[1];
 	}
 	
-	char MainBuffer[32];
+	//char MainBuffer[32];
 
 	MainMenu();
 
@@ -169,6 +170,11 @@ void ThreadCmcControl()
 	// Enable the new setting right now
 	tcsetattr(fd, TCSANOW, &options);
 	
+	if(!strcmp(MainBuffer, "USB\n\0") || !strcmp(MainBuffer, "usb\n\0"))
+	{
+		printf("test for enter mode:\n");
+		scanf("%s", &vlan_mode);
+	}
 	//sprintf(vlan_mode,"DVGM");
 	sleep(1);
 	write(fd,"root\n",5);
