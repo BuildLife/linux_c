@@ -431,7 +431,7 @@ char client_buffer[128];
 char sendserver_buffer[128];
 
 /*just for test socket signal SIGURG*/
-static void sigurg(int signo)
+/*static void sigurg(int signo)
 {
 	int n;
 	char buf[128];
@@ -451,7 +451,7 @@ static void sigurg(int signo)
 	}
 		
 	signal(SIGURG, sigurg);
-}
+}*/
 
 
 /*Client socket for use*/
@@ -460,14 +460,7 @@ void ThreadClientSocket()
 	int GetTimesValue = 0;
 	int GetStartVID = 0;
 	fd_set rfds;
-	//int clientfd;
 	int res = 0;
-/*	struct sockaddr_in client_addr;
-	struct sockaddr_in server_addr;
-	int cl_addr = sizeof(struct sockaddr_in);
-	char client_buffer[128];
-	char sendserver_buffer[128];
-*/
 	//create socket
 	/*tcp socket*/
 	//clientfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -1459,7 +1452,7 @@ int main(int argc,char *argv[])
 	signal(SIGINT, Signal_Stophandler);
 
 	/*test catch sigurg*/
-	signal(SIGURG, sigurg);
+	//signal(SIGURG, sigurg);
 	
 	if(argc == 3)
 	{
@@ -1545,20 +1538,10 @@ int main(int argc,char *argv[])
 		exit(1);
 	}*/
 
-	/*Client Socket*/
-/*	pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
-	if( pth_socket != 0 )
-	{
-		printf("Create Socket Function Thread Error\n");
-		printf("exit........................\n");
-		exit(1);
-	}
-*/
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
 	//pthread_join(pthreadProcessStatus, NULL);
-//	pthread_join(pthreadSocketClient, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);
