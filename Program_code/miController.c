@@ -52,7 +52,7 @@ pthread_t pthreadSocketServerRunning;
 /*Use in connect Com Port*/
 pthread_t pthreadComPort;
 
-int main(int argc,char *argv[])
+int main(int argc, char *argv[])
 {
 
 	int pth_socserver = 0, pth_usbport = 0;
@@ -120,10 +120,10 @@ void ThreadCmcControl()
 	fcntl(fd, F_SETFL, FNDELAY);
 
 	//set USB Comport default values
-	tcgetattr(fd,&oldtio);
+	tcgetattr(fd, &oldtio);
 
 	//Get the original setting
-	tcgetattr(fd,&options);
+	tcgetattr(fd, &options);
 	bzero(&options, sizeof(options));
 	// Setting the Baudrate
 	cfsetispeed(&options,BAUDRATE);
@@ -177,13 +177,13 @@ void ThreadCmcControl()
 	}
 	//sprintf(vlan_mode,"DVGM");
 	sleep(1);
-	write(fd,"root\n",5);
+	write(fd, "root\n", 5);
 
 	sleep(1);
-	if(!strcmp(vlan_mode,"DVGM"))
-		sprintf(w_o_buf,"vlan rule disable\n");
-	else if(!strcmp(vlan_mode,"SVGM"))
-		sprintf(w_o_buf,"vlan rule enable\n");
+	if(!strcmp(vlan_mode, "DVGM"))
+		sprintf(w_o_buf, "vlan rule disable\n");
+	else if(!strcmp(vlan_mode, "SVGM"))
+		sprintf(w_o_buf, "vlan rule enable\n");
 	
 	int runtimes = 0;
 	
@@ -192,34 +192,34 @@ void ThreadCmcControl()
 		res = read(fd, buf, 255);
 		sleep(1);
 		buf[res] = '\0';
-		printf("%s\n",buf);
+		printf("%s\n", buf);
 		
-		if(strstr(buf,"login: "))
+		if(strstr(buf, "login: "))
 		{
-			write(fd,"root\n",5);
+			write(fd, "root\n", 5);
 			sleep(1);
 		}
 
-		if(strstr(buf,"Password:"))
+		if(strstr(buf, "Password:"))
 		{
-			write(fd,"admin\n",6);
+			write(fd, "admin\n", 6);
 			sleep(1);
 		}
 
-		if(strstr(buf,"Controller#"))
+		if(strstr(buf, "Controller#"))
 		{
-			write(fd,"configure terminal\n",20);
+			write(fd, "configure terminal\n", 20);
 			sleep(1);
 		}
-		if(strstr(buf,"Controller-cfg#"))
+		if(strstr(buf, "Controller-cfg#"))
 		{
-			write(fd,w_o_buf,sizeof(w_o_buf));
+			write(fd, w_o_buf, sizeof(w_o_buf));
 		}
 		sleep(2);
 		runtimes++;
 		if(runtimes > 4)
 		{
-			printf("Enter in %s mode\n",vlan_mode);
+			printf("Enter in %s mode\n", vlan_mode);
 			printf("set mode ok\n");
 			STOP = TRUE;
 		}
@@ -232,7 +232,7 @@ void ThreadCmcControl()
 	}
 	
 	//set USB Comport to default values
-	tcgetattr(fd,&oldtio);
+	tcgetattr(fd, &oldtio);
 
 	//let USB Comport can running while loop
 	STOP = FALSE;
@@ -277,7 +277,7 @@ void ThreadSocket()
 
 	/*for multi socket client to connect
 	  Avoid that address already in use,and can be use the same port.*/
-	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes,sizeof(yes)) < 0)
+	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)) < 0)
 	{
 		perror("Setting local interface error");
 		exit(1);
@@ -308,7 +308,7 @@ void ThreadSocket()
 		if(select(sockfd+1, &rfds, NULL, NULL, NULL)) {
 			if(FD_ISSET(sockfd, &rfds)) {
 		/*udp socket*/
-		clientfd = recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
+		clientfd = recvfrom(sockfd, recvbuffer, sizeof(recvbuffer)-1, 0, (struct sockaddr*)&client_addr, &cl_addrlen);
 		/*if(clientfd < 0)
 		{
 			printf("Client Connect Fail, Please Check it again.......\n");
@@ -335,9 +335,9 @@ void ThreadSocket()
 			recvbuffer[5] = 0x52;
 	
 			/*udp socket*/
-			sendto(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen);
+			sendto(sockfd, recvbuffer, sizeof(recvbuffer)-1, 0, (struct sockaddr*)&client_addr, cl_addrlen);
 
-			memset(recvbuffer,0,sizeof(recvbuffer));
+			memset(recvbuffer, 0, sizeof(recvbuffer));
 			//SetSendClientValue(&buffer[0]);
 
 			SocketMenu();
@@ -370,7 +370,7 @@ void ThreadSocket()
 				//if(send(clientfd,buffer,sizeof(buffer),0) < 0)
 				
 				/*udp socket*/
-				if(sendto(sockfd,buffer,sizeof(buffer)-1,0,(struct sockaddr*)&client_addr,cl_addrlen) > 0)
+				if(sendto(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr*)&client_addr, cl_addrlen) > 0)
 				{
 					printf("Sending to client Success, Start to test\n");
 				}
@@ -389,7 +389,7 @@ void ThreadSocket()
 			}
 			else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
-				recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
+				recvfrom(sockfd, recvbuffer, sizeof(recvbuffer)-1, 0, (struct sockaddr*)&client_addr, &cl_addrlen);
 				if(recvbuffer[0] == 0x53 && recvbuffer[1] == 0x54 && recvbuffer[2] == 0x4F && recvbuffer[3] == 0x50)
 				{
 					printf("Client have been STOP\n");
@@ -404,7 +404,7 @@ void ThreadSocket()
 			{
 				int i = 0;
 				int j = 0;
-				for(;j<6;j++)
+				for( ; j < 6; j++)
 				{
 					buffer[j] = 0x00;
 				}
@@ -422,14 +422,14 @@ void ThreadSocket()
 				//send(clientfd,buffer,11,0);
 				
 				/*udp socket*/
-				sendto(sockfd,buffer,11,0,(struct sockaddr*)&client_addr,cl_addrlen);
+				sendto(sockfd, buffer, 11, 0, (struct sockaddr*)&client_addr, cl_addrlen);
 				
 				close(clientfd);
 				close(sockfd);
 				pthread_cancel(pthreadSocketServerRunning);
 				
 				//Clear buffer to zero
-				memset(buffer,0,sizeof(buffer));
+				memset(buffer, 0, sizeof(buffer));
 				
 			}
 			//else
@@ -471,27 +471,27 @@ void SetSendClientValue(int *mode)
 	printf("Enter Test Mode (DVGM/SVGM): \n");
 	
 	do{
-		if(scanf("%s",&vlan_mode) != 1)
+		if(scanf("%s", &vlan_mode) != 1)
 		{
 			printf("Please at least enter a mode(DVGM/SVGM)\n");
 		}
-		else if(strcmp(vlan_mode,"DVGM") != 0 && strcmp(vlan_mode,"SVGM") != 0)
+		else if(strcmp(vlan_mode, "DVGM") != 0 && strcmp(vlan_mode, "SVGM") != 0)
 		{
 			printf("Please Enter the right word(DVGM/SVGM)\n");
 		}
 
-	}while(strcmp(vlan_mode,"DVGM") != 0 && strcmp(vlan_mode,"SVGM") != 0);
+	}while(strcmp(vlan_mode, "DVGM") != 0 && strcmp(vlan_mode, "SVGM") != 0);
 
-	if(!strcmp(vlan_mode,"DVGM"))
+	if(!strcmp(vlan_mode, "DVGM"))
 		*mode = 1;
-	else if(!strcmp(vlan_mode,"SVGM"))
+	else if(!strcmp(vlan_mode, "SVGM"))
 		*mode = 2;
 
 	printf("Enter Running Times or 0 Keeping the loop running: \n");
-	scanf("%d",&Runtimes);
+	scanf("%d", &Runtimes);
 
 	printf("Enter Start VID(2049 ~ 2512) : \n");
-	if(scanf("%d",&StartVID) != 1)
+	if(scanf("%d", &StartVID) != 1)
 	{	
 		printf("Enter the wrong, the VID have begin 2049\n");
 		StartVID = 2049;

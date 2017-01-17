@@ -25,7 +25,7 @@
 #include <netdb.h>
 #include <errno.h>
 
-
+//#include <linux/if.h> // for finding mac -> IFNAMSIZ
 #include <pcap.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
@@ -94,13 +94,15 @@ char *mac_ntoa(unsigned char *);
 void SVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *);
 void DVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *);
 void dump_ip(ip_header *, int);
-void pcap_handler_func(unsigned char *,const struct pcap_pkthdr *, const unsigned char *);
-void pcap_handler_func_lan(unsigned char *,const struct pcap_pkthdr *, const unsigned char *);
+void pcap_handler_func(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
+void pcap_handler_func_lan(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
 void read_loop();
 void read_loop_lan();
 void MACandVIDplus();
 void Option_Receive(int, char);
 void send_packet();
+//char *GetEthMACaddress(char []);
+void GetEthMACaddress(char [],unsigned char *mac);
 
 
 
@@ -404,6 +406,10 @@ char DHCPpktcBuf_offer[] = {
 0xff, 0x00, 0xff };
 
 
+
+/*Normal Send Packet*/
+
+
 int StopLoopRunning = 0;
 
 
@@ -429,30 +435,6 @@ struct sockaddr_in server_addr;
 int cl_addr = sizeof(struct sockaddr_in);
 char client_buffer[128];
 char sendserver_buffer[128];
-
-/*just for test socket signal SIGURG*/
-/*static void sigurg(int signo)
-{
-	int n;
-	char buf[128];
-	
-	n = recv(clientfd,buf,sizeof(buf),MSG_OOB);
-	if(n<0)
-	{
-		perror("clientfd");
-	}
-
-	buf[n] = 0;
-	printf("//////////////////////////////////\n");
-	printf("read %d bytes buf OOB : %s\n",n,buf);
-	if(buf[5] == 0x02)
-	{
-		StopLoopRunning = 1;	
-	}
-		
-	signal(SIGURG, sigurg);
-}*/
-
 
 /*Client socket for use*/
 void ThreadClientSocket()
@@ -506,14 +488,14 @@ void ThreadClientSocket()
 	sendserver_buffer[9] = 0x4E;
 
 	//tell socket server , client to connect
-	sendto(clientfd, sendserver_buffer, 10, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
+	sendto(clientfd, sendserver_buffer, 10, 0, (struct sockaddr *)&client_addr, sizeof(client_addr));
 
 	sleep(1);
-	recvfrom(clientfd, sendserver_buffer, sizeof(sendserver_buffer)-1, 0, (struct sockaddr *)&server_addr,&cl_addr);
+	recvfrom(clientfd, sendserver_buffer, sizeof(sendserver_buffer)-1, 0, (struct sockaddr *)&server_addr, &cl_addr);
 	if(sendserver_buffer[0] == 0x53 && sendserver_buffer[1] == 0x45 && sendserver_buffer[2] == 0x52 && sendserver_buffer[3] == 0x56 && sendserver_buffer[4] == 0x45 && sendserver_buffer[5] == 0x52 && sendserver_buffer[6] == 0x4F && sendserver_buffer[7] == 0x50 && sendserver_buffer[8] == 0x45 && sendserver_buffer[9] == 0x4E)
 		{
 			printf("Connect to Server\n");
-			memset(sendserver_buffer,0,sizeof(sendserver_buffer));
+			memset(sendserver_buffer, 0, sizeof(sendserver_buffer));
 		}
 		
 	
@@ -522,7 +504,7 @@ void ThreadClientSocket()
 	{
 		FD_ZERO(&rfds);
 		FD_SET(clientfd, &rfds);
-		if(select(clientfd+1, &rfds, NULL,NULL,NULL)) {
+		if(select(clientfd+1, &rfds, NULL, NULL, NULL)) {
 			if(FD_ISSET(clientfd, &rfds)) {
 		/*tcp socket*/
 		//res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
@@ -575,7 +557,7 @@ void ThreadClientSocket()
 				client_buffer[1] = 0x54;
 				client_buffer[2] = 0x4F;
 				client_buffer[3] = 0x50;
-				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
+				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr, sizeof(client_addr));
 
 			}
 			else if(client_buffer[6] == 0x43 && client_buffer[7] == 0x4C && client_buffer[8] == 0x4F && client_buffer[9] == 0x53 && client_buffer[10] == 0x45)
@@ -587,7 +569,7 @@ void ThreadClientSocket()
 		}
 	}
 	close(clientfd);
-	FD_CLR(clientfd,&rfds);
+	FD_CLR(clientfd, &rfds);
 }
 
 
@@ -609,7 +591,7 @@ void Menu(char *mode)
 		{
 			printf("Enter Send Times or Enter 0 keep sending loop:\n");
 			printf("Sending Times : ");
-			scanf("%d",&Running_Times);
+			scanf("%d", &Running_Times);
 			if(Running_Times == 0)
 			{
 				/*Use in while loop always still Running*/
@@ -621,7 +603,7 @@ void Menu(char *mode)
 			}
 			printf("Enter Start VID(limit : 2292):\n");
 			printf("VID : ");
-			scanf("%u",&Start_VID);
+			scanf("%u", &Start_VID);
 			if(Start_VID >= 2049 && Start_VID < 2512)
 			{		
 				DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
@@ -1448,6 +1430,8 @@ void send_packet()
 int main(int argc,char *argv[])
 {
 
+	unsigned char *ethmac;
+	unsigned char *ethmac_wan;
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
 
@@ -1463,6 +1447,14 @@ int main(int argc,char *argv[])
 
 	printf("LAN Port = %s\n", LAN_port);
 	printf("WAN Port = %s\n", WAN_port);
+
+	//ethmac = GetEthMACaddress(LAN_port);
+	//ethmac_wan = GetEthMACaddress(WAN_port);
+	GetEthMACaddress(LAN_port,ethmac);
+	GetEthMACaddress(WAN_port,ethmac_wan);
+
+	printf("LAN port MAC : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",ethmac[0],ethmac[1],ethmac[2],ethmac[3],ethmac[4],ethmac[5]);
+	printf("WAN port MAC : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",ethmac_wan[0],ethmac_wan[1],ethmac_wan[2],ethmac_wan[3],ethmac_wan[4],ethmac_wan[5]);
 
 	Menu("default");
 
@@ -1551,3 +1543,24 @@ int main(int argc,char *argv[])
 	free(SendpktcBuf_offer);
 	return 0;
 }
+
+void GetEthMACaddress(char eth_port[],unsigned char *mac)
+{
+	int fd;
+	struct ifreq ifr;
+	//unsigned char *mac;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	ifr.ifr_addr.sa_family = AF_INET;
+	strncpy(ifr.ifr_name, eth_port, IFNAMSIZ - 1);
+
+	ioctl(fd, SIOCGIFHWADDR, &ifr);
+	close(fd);
+
+	mac = (unsigned char*) ifr.ifr_hwaddr.sa_data;
+	//printf("LAN port MAC : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+
+	//return mac;
+}
+
