@@ -101,8 +101,7 @@ void read_loop_lan();
 void MACandVIDplus();
 void Option_Receive(int, char);
 void send_packet();
-//char *GetEthMACaddress(char []);
-void GetEthMACaddress(char [],unsigned char *mac);
+void GetEthMACaddress(char []);
 
 
 
@@ -146,6 +145,9 @@ int Receivedocsispkt = 0, Receivepktcpkt = 0;
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pcap_read_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*Sending Packet for DHCP or ARP*/
+//char *PacketMode = "default";
+char *PacketMode = "DHCP";
 
 /*2293 0x08 0x2D*/
 /*mac default 0x00 0x1c 0x7b 0x11 0x11 0x12*/
@@ -407,8 +409,18 @@ char DHCPpktcBuf_offer[] = {
 
 
 
-/*Normal Send Packet*/
-
+/*Normal Send Packet(request[1])*/
+/*Arp[0~5] -> Destination MAC
+Arp[6~11] -> Source MAC*/
+char ArpPacket[]  = {
+0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
+0x7b, 0x22, 0x22, 0x22, 0x81, 0x00, 0x08, 0x01,
+0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 
+0x00, 0x01, 0x00, 0x1c, 0x7b, 0x22, 0x22, 0x22, 
+0xc0, 0xa8, 0x0a, 0x83, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x01, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, };
 
 int StopLoopRunning = 0;
 
@@ -1245,7 +1257,8 @@ void Option_Receive(int D_times, char sop)
 
 			if(Random_send >= 1 && Random_send < 50)
 			{
-	//		recvfrom(clientfd, client_buffer, sizeof(client_buffer)-1, 0, (struct sockaddr *)&server_addr,&cl_addr);
+				if(PacketMode == "DHCP")
+				{
 				DHCPBufMode = "docsis";
 
 				pthread_mutex_lock(&pcap_send_mutex);
@@ -1264,9 +1277,26 @@ void Option_Receive(int D_times, char sop)
 				}
 
 				pthread_mutex_unlock(&pcap_send_mutex);
+				}
+				else if(PacketMode == "ARP")
+				{
+
+					pthread_mutex_lock(&pcap_send_mutex);
+
+					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
+						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+						pthread_mutex_unlock(&pcap_send_mutex);
+						return 1;
+					}
+
+					pthread_mutex_unlock(&pcap_send_mutex);
+
+				}
 			}
 			else if(Random_send >= 50 && Random_send <= 100)
 			{
+				if(PacketMode == "DHCP")
+				{
 				DHCPBufMode = "pktc";
 
 				pthread_mutex_lock(&pcap_send_mutex);
@@ -1286,11 +1316,26 @@ void Option_Receive(int D_times, char sop)
 				}
 
 				pthread_mutex_unlock(&pcap_send_mutex);
+				}
+				else if(PacketMode == "ARP")
+				{
+
+					pthread_mutex_lock(&pcap_send_mutex);
+
+					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
+						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+						pthread_mutex_unlock(&pcap_send_mutex);
+						return 1;
+					}
+
+					pthread_mutex_unlock(&pcap_send_mutex);
+
+				}
 			}
-			if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
+		/*	if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
 			{
 				StopLoopRunning = 1;
-			}
+			}*/
 			sleep(1);
 
 
@@ -1345,7 +1390,7 @@ void Option_Receive(int D_times, char sop)
 }
 
 
-//compare word to enter
+//option
 char buf;
 
 void send_packet()
@@ -1392,46 +1437,9 @@ void send_packet()
 	}
 }
 
-
-/*check process*/
-/*void process_status()
-{
-	//test for check process status
-	//signal(SIGALRM,SignalAlarmProcessStatus);
-
-	int status;
-	pid_t pid;
-
-	if(!fork())
-		return 1;
-
-	pid = wait(&status);
-
-	if(pid == -1)
-		perror("wait");
-
-	printf("pid = %d\n",pid);
-
-	if(WIFEXITED(status))
-		printf("Normal termination with exit status = %d\n", WEXITSTATUS(status));
-	
-
-	if(WIFSIGNALED(status))
-		printf("killed by signal = %d%s\n", WTERMSIG(status), WCOREDUMP(status) ? "(dumped core)": "");
-
-	if(WIFSTOPPED(status))
-		printf("Stopped by signal = %d\n",WSTOPSIG(status));
-
-	if(WIFCONTINUED(status))
-		printf("Continued\n");
-}*/
-
-
 int main(int argc,char *argv[])
 {
 
-	unsigned char *ethmac;
-	unsigned char *ethmac_wan;
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
 
@@ -1447,14 +1455,6 @@ int main(int argc,char *argv[])
 
 	printf("LAN Port = %s\n", LAN_port);
 	printf("WAN Port = %s\n", WAN_port);
-
-	//ethmac = GetEthMACaddress(LAN_port);
-	//ethmac_wan = GetEthMACaddress(WAN_port);
-	GetEthMACaddress(LAN_port,ethmac);
-	GetEthMACaddress(WAN_port,ethmac_wan);
-
-	printf("LAN port MAC : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",ethmac[0],ethmac[1],ethmac[2],ethmac[3],ethmac[4],ethmac[5]);
-	printf("WAN port MAC : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",ethmac_wan[0],ethmac_wan[1],ethmac_wan[2],ethmac_wan[3],ethmac_wan[4],ethmac_wan[5]);
 
 	Menu("default");
 
@@ -1521,19 +1521,9 @@ int main(int argc,char *argv[])
 		exit(1);
 	}
 
-	/*Process status test*/
-	/*pth_status = pthread_create(&pthreadProcessStatus, NULL, (void*)process_status, NULL);
-	if( pth_status != 0 )
-	{
-		printf("Create Status Function Thread Error\n");
-		printf("exit........................\n");
-		exit(1);
-	}*/
-
 	pthread_join(pthreadSendPacket, NULL);
 	pthread_join(pthreadReadLoop, NULL);
 	pthread_join(pthreadReadLoopLAN, NULL);
-	//pthread_join(pthreadProcessStatus, NULL);
 
 	free(SendBuf);
 	free(SendpktcBuf);
@@ -1544,11 +1534,13 @@ int main(int argc,char *argv[])
 	return 0;
 }
 
-void GetEthMACaddress(char eth_port[],unsigned char *mac)
+
+//Not in use
+/*void GetEthMACaddress(char eth_port[])
 {
 	int fd;
 	struct ifreq ifr;
-	//unsigned char *mac;
+	unsigned char *mac;
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -1559,8 +1551,13 @@ void GetEthMACaddress(char eth_port[],unsigned char *mac)
 	close(fd);
 
 	mac = (unsigned char*) ifr.ifr_hwaddr.sa_data;
-	//printf("LAN port MAC : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
 
-	//return mac;
-}
+	ArpPacket[6] = mac[0];
+	ArpPacket[7] = mac[1];
+	ArpPacket[8] = mac[2];
+	ArpPacket[9] = mac[3];
+	ArpPacket[10] = mac[4];
+	ArpPacket[11] = mac[5];
+
+}*/
 

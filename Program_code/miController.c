@@ -172,7 +172,7 @@ void ThreadCmcControl()
 	
 	if(!strcmp(MainBuffer, "USB\n\0") || !strcmp(MainBuffer, "usb\n\0"))
 	{
-		printf("test for enter mode:\n");
+		printf("test for enter mode(DVGM/SVGM):\n");
 		scanf("%s", &vlan_mode);
 	}
 	//sprintf(vlan_mode,"DVGM");
