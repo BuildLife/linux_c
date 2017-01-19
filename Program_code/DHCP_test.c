@@ -25,7 +25,6 @@
 #include <netdb.h>
 #include <errno.h>
 
-//#include <linux/if.h> // for finding mac -> IFNAMSIZ
 #include <pcap.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
@@ -132,7 +131,7 @@ unsigned int Running_Times = 0, KeepRunning = 0;
 int CompareFalseTimes = 0, CompareTrueTimes = 0;
 int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 
-/*Auto testing flag*/
+/*Socket Server for Auto testing flag 1 : open auto ; 0 : close auto*/
 int AutoTesting = 0;
 
 /*Random Sending data*/
@@ -146,8 +145,8 @@ pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pcap_read_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*Sending Packet for DHCP or ARP*/
-//char *PacketMode = "default";
-char *PacketMode = "DHCP";
+char *PacketMode = "default";
+//char *PacketMode = "DHCP";
 
 /*2293 0x08 0x2D*/
 /*mac default 0x00 0x1c 0x7b 0x11 0x11 0x12*/
@@ -613,15 +612,21 @@ void Menu(char *mode)
 				/*Avoid enter expect Ctrl+c, so in the start to set 0*/
 				StopLoopRunning = 0;
 			}
+
 			printf("Enter Start VID(limit : 2292):\n");
 			printf("VID : ");
 			scanf("%u", &Start_VID);
 			if(Start_VID >= 2049 && Start_VID < 2512)
-			{		
+			{	
+				/*Set DHCP VLAN ID*/
 				DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
 				DHCPdocsisBuf[15] = (Start_VID) & 0xff;
 				DHCPpktcBuf[14] = (Start_VID >> 8) & 0xff;
 				DHCPpktcBuf[15] = (Start_VID) & 0xff;
+				
+				/*Set ARP VLAN ID*/
+				ArpPacket[14] = (Start_VID >> 8) & 0xff;
+				ArpPacket[15] = (Start_VID) & 0xff;
 			}
 		}
 	}
@@ -683,10 +688,11 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	//WAN : TPID
 	WAN_TPID = ntohs(WAN_ethhdr -> tpid);
 	/****************************************************************************************/
-	
+	printf("------------ %s ------------------\n",PacketMode);
 		printf("------------------------------- SVGM Mode ---------------------------------------\n");
 		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
 		printf("---------------- %s ---------------- | --------------- %s --------------\n",LAN_port,WAN_port);
+	if(PacketMode == "DHCP") {
 	if(DHCPBufMode == "docsis")
 	{
 		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
@@ -716,6 +722,15 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_pktc_TPID,WAN_TPID);
 		
+	}
+	}
+	if(PacketMode == "ARP")
+	{
+		printf("--------------------------ARP------------------------------------------\n");
+		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s        |   %17s\n",LAN_docsis_srcmac, WAN_srcmac);
+
 	}
 		/*Send buffer to ip structure*/
 		dump_ip((ip_header*)(content + sizeof(eth_header)),length - sizeof(eth_header));
@@ -847,9 +862,7 @@ void dump_ip(ip_header *ipv4, int length)
 			}
 			
 			if(compare_num > 0)
-			{
 				CompareFalseTimes += 1;
-			}
 			else
 				CompareTrueTimes += 1;
 
@@ -863,9 +876,7 @@ void dump_ip(ip_header *ipv4, int length)
 			
 			/*for test*/
 			if((!compare_num) == 0)
-			{
 				StopLoopRunning = 1;
-			}
 
 		}
 		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
@@ -896,9 +907,7 @@ void dump_ip(ip_header *ipv4, int length)
 			}
 			
 			if(compare_offer > 0)
-			{
 				CompareFalseTimes_offer += 1;
-			}
 			else
 				CompareTrueTimes_offer += 1;
 
@@ -927,9 +936,9 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	/*For LAN pktc buffer*/
 	eth_header *LAN_pktc_ethhdr = (eth_header*)DHCPpktcBuf;
 
-
 	//check buffer length have enough normal ethernet buffer
-	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header)){
+	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header))
+	{
 		return;
 	}
 
@@ -939,8 +948,7 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	{
 		return;
 	}
-
-		
+	
 	/*Send buffer to ip structure*/
 	if(ChangeMode == "DVGM")
 	{
@@ -955,13 +963,17 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	else if(ChangeMode == "SVGM")
 	{
 		unsigned short SVGM_checksum = (bytes[22] << 8) | bytes[23];
-		if(SVGM_checksum == 0xdead)
+		if(SVGM_checksum == 0xdead && PacketMode == "DHCP")
+		{
+			printf("Current Send Times : %s",timebuf);
+			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
+		}
+		else if(PacketMode == "ARP")
 		{
 			printf("Current Send Times : %s",timebuf);
 			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
 		}
 	}
-	//pthread_mutex_unlock(&pcap_read_mutex);
 }
 
 
@@ -977,7 +989,8 @@ void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header,
 
 
 	//check buffer length have enough normal ethernet buffer
-	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header)){
+	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header))
+	{
 		return;
 	}
 
@@ -1081,6 +1094,13 @@ void read_loop()
 	struct bpf_program bpf_p;
 	bpf_u_int32 net,mask;
 
+	char *protocol_filter;
+
+	if(PacketMode == "DHCP")
+		protocol_filter = "udp";
+	else if(PacketMode == "ARP")
+		protocol_filter = "arp";
+
 	//CASTLE USEING : ubuntu 12.04
 	p_read = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
 
@@ -1089,7 +1109,7 @@ void read_loop()
 		return 1;
 	}
 
-	if( pcap_compile(p_read, &bpf_p, "udp", 1, mask) == -1){
+	if( pcap_compile(p_read, &bpf_p, protocol_filter, 1, mask) == -1){
 		fprintf(stderr, "pcap_comiple:%s\n", pcap_geterr(p_read));
 		pcap_close(p_read);
 		exit(1);
@@ -1125,19 +1145,21 @@ void read_loop_lan()
 	pcap_t *p_read_lan;
 	p_read_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
 
-	if( p_read_lan == NULL ){
+	if( p_read_lan == NULL )
+	{
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
 		return 1;
 	}
 
-	if( pcap_compile(p_read_lan, &bpf_p, "udp", 1, mask) == -1){
+	if( pcap_compile(p_read_lan, &bpf_p, "udp", 1, mask) == -1)
+	{
 		fprintf(stderr, "pcap_comiple:%s\n", pcap_geterr(p_read_lan));
 		pcap_close(p_read_lan);
 		exit(1);
 	}
 
-	if( pcap_setfilter(p_read_lan, &bpf_p) == -1){
-
+	if( pcap_setfilter(p_read_lan, &bpf_p) == -1)
+	{
 		fprintf(stderr, "pcap_setfilter:%s\n", pcap_geterr(p_read_lan));
 		pcap_close(p_read_lan);
 		exit(1);
@@ -1145,7 +1167,8 @@ void read_loop_lan()
 
 	pcap_freecode(&bpf_p);
 
-	if (pcap_loop(p_read_lan, -1, pcap_handler_func_lan, NULL) < 0){
+	if (pcap_loop(p_read_lan, -1, pcap_handler_func_lan, NULL) < 0)
+	{
 		fprintf(stderr, "pcap_read:%s\n", pcap_geterr(p_read_lan));
 		pcap_close(p_read_lan);
 		exit(1);
@@ -1163,27 +1186,39 @@ void MACandVIDplus()
 	{
 		if((DHCPpktcBuf[11] & 0xff) == 255)
 		{
+			/*DHCP MAC Add*/
 			DHCPdocsisBuf[10] += 0x01;
 			DHCPpktcBuf[10] += 0x01;
-
 
 			DHCPdocsisBuf[11] = 0x00;
 			DHCPpktcBuf[11] = 0x00;
 
+			/*ARP MAC Add*/
+			ArpPacket[10] += 0x01;
+			ArpPacket[11] += 0x00;
+
 		}
 		else
 		{
-			
+			/*DHCP MAC Add*/
 			DHCPdocsisBuf[11] += 0x01;
 			DHCPpktcBuf[11] += 0x01;
+
+			/*ARP MAC Add*/
+			ArpPacket[11] += 0x01;
 		}
 	}
 	else
 	{
+		/*DHCP MAC the last two bytes set to zero*/
 		DHCPpktcBuf[10] = 0x00;
 		DHCPdocsisBuf[10] = 0X00;
 		DHCPpktcBuf[11] = 0x00;
 		DHCPdocsisBuf[11] = 0X00;
+
+		/*ARP MAC the last two bytes set to zero*/
+		ArpPacket[10] = 0x00;
+		ArpPacket[11] = 0x00;
 	}
 
 	//vlan tag
@@ -1191,24 +1226,38 @@ void MACandVIDplus()
 	{
 		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
 		{	
+			/*DHCP VLAN ID Add to next byte for keep plus*/
 			DHCPdocsisBuf[14] += 0x01;
 			DHCPpktcBuf[14] += 0x01;
 
 			DHCPdocsisBuf[15] = 0x00;
 			DHCPpktcBuf[15] = 0x00;
+			
+			/*ARP VLAN ID Add to next byte for keep plus*/
+			ArpPacket[14] += 0x01;
+			ArpPacket[15] += 0x00;
 		}
 		else
 		{
+			/*DHCP VLAN ID Add*/
 			DHCPpktcBuf[15] += 0x01;
 			DHCPdocsisBuf[15] += 0X01;
+			
+			/*ARP VLAN ID Add*/
+			ArpPacket[15] += 0x01;
 		}
 	}
 	else
 	{
+		/*DHCP VLAN ID the last two bytes set to default 2049*/
 		DHCPpktcBuf[14] = 0x08;
 		DHCPdocsisBuf[14] = 0X08;
 		DHCPpktcBuf[15] = 0x01;
 		DHCPdocsisBuf[15] = 0X01;
+		
+		/*ARP VLAN ID the last two bytes set to defalt 2049*/
+		ArpPacket[14] += 0x08;
+		ArpPacket[15] += 0x01;
 	}
 }
 
@@ -1223,7 +1272,8 @@ void Option_Receive(int D_times, char sop)
 	//CASTLE USEING : ubuntu 12.04
 	p_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
 	
-	if( p_lan == NULL ){
+	if( p_lan == NULL )
+	{
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
 		return 1;
 	}
@@ -1232,7 +1282,8 @@ void Option_Receive(int D_times, char sop)
 	pcap_t *p_wan;
 
 	p_wan = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
-	if( p_wan == NULL ){
+	if( p_wan == NULL )
+	{
 		fprintf(stderr, "Couldn't find default device : %s\n", errbuf);
 		return 1;
 	}
@@ -1248,6 +1299,7 @@ void Option_Receive(int D_times, char sop)
 			ChangeMode = "SVGM";
 
 		Menu(ChangeMode);
+
 		while(D_times < Running_Times || KeepRunning == 1)
 		{
 			Random_send = (rand() % 100)+1;
@@ -1257,87 +1309,79 @@ void Option_Receive(int D_times, char sop)
 
 			if(Random_send >= 1 && Random_send < 50)
 			{
-				if(PacketMode == "DHCP")
-				{
-				DHCPBufMode = "docsis";
-
-				pthread_mutex_lock(&pcap_send_mutex);
-
-				if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
-					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-					pthread_mutex_unlock(&pcap_send_mutex);
-					return 1;
-				}
-				nanosleep(&send_ts,NULL);
-
-				if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, sizeof(DHCPdocsisBuf_offer)) < 0){
-					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
-					pthread_mutex_unlock(&pcap_send_mutex);
-					return 1;
-				}
-
-				pthread_mutex_unlock(&pcap_send_mutex);
-				}
-				else if(PacketMode == "ARP")
-				{
+					DHCPBufMode = "docsis";
 
 					pthread_mutex_lock(&pcap_send_mutex);
 
+					if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
+						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+						//pthread_mutex_unlock(&pcap_send_mutex);
+						return 1;
+					}
+					else
+						PacketMode = "DHCP";
+
+					nanosleep(&send_ts,NULL);
+
+					//Sending ARP Packet
 					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+						//pthread_mutex_unlock(&pcap_send_mutex);
+						return 1;
+					}
+					else
+						PacketMode = "ARP";
+
+					nanosleep(&send_ts,NULL);
+
+					if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, sizeof(DHCPdocsisBuf_offer)) < 0){
+						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
 						pthread_mutex_unlock(&pcap_send_mutex);
 						return 1;
 					}
 
 					pthread_mutex_unlock(&pcap_send_mutex);
-
-				}
 			}
 			else if(Random_send >= 50 && Random_send <= 100)
 			{
-				if(PacketMode == "DHCP")
-				{
-				DHCPBufMode = "pktc";
-
-				pthread_mutex_lock(&pcap_send_mutex);
-
-				if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
-					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-					pthread_mutex_unlock(&pcap_send_mutex);
-					return 1;
-				}
-
-				nanosleep(&send_ts,NULL);
-
-				if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, sizeof(DHCPpktcBuf_offer)) < 0){
-					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
-					pthread_mutex_unlock(&pcap_send_mutex);
-					return 1;
-				}
-
-				pthread_mutex_unlock(&pcap_send_mutex);
-				}
-				else if(PacketMode == "ARP")
-				{
+					DHCPBufMode = "pktc";
 
 					pthread_mutex_lock(&pcap_send_mutex);
 
+					if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
+						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+						pthread_mutex_unlock(&pcap_send_mutex);
+						return 1;
+					}
+					else
+						PacketMode = "DHCP";
+
+					nanosleep(&send_ts,NULL);
+			
+					//Sending ARP Packet
 					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 						pthread_mutex_unlock(&pcap_send_mutex);
 						return 1;
 					}
+					else
+						PacketMode = "ARP";
+
+					nanosleep(&send_ts,NULL);
+
+					if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, sizeof(DHCPpktcBuf_offer)) < 0){
+						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
+						pthread_mutex_unlock(&pcap_send_mutex);
+						return 1;
+					}
 
 					pthread_mutex_unlock(&pcap_send_mutex);
-
-				}
 			}
 		/*	if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
 			{
 				StopLoopRunning = 1;
 			}*/
 			sleep(1);
-
 
 			/*Add mac and vid function*/
 			MACandVIDplus();
@@ -1376,8 +1420,6 @@ void Option_Receive(int D_times, char sop)
 		//Init Lose packet record count
 		Receivedocsispkt = 0;
 		Receivepktcpkt = 0;
-
-
 		KeepRunning = 0;
 		Running_Times = 0;
 		AutoTesting = 0;
