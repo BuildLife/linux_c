@@ -65,6 +65,21 @@ typedef struct S_IP_HEADER
 	unsigned int ip_dst;	//4 Byte
 }__attribute__((__packed__)) ip_header;
 
+typedef struct ARP_HEADER
+{
+	unsigned short arp_hr_type;// Hardware type
+	unsigned short arp_p; // protocol
+	unsigned char arp_hard_size; //Hardware size
+	unsigned char arp_pro_size; // Protocol size
+	unsigned short arp_opcode; //ARP opcode
+	unsigned char arp_sender_mac[6]; //Sender mac address
+	unsigned int arp_sender_ip; //Sender ip address
+	unsigned char arp_target_mac[6]; //Target mac address
+	unsigned int arp_target_ip; //Target ip address
+}__attribute__((__packed__)) arp_header;
+
+
+
 #define MAC_ADDRSTRLEN 2*6+5+1
 
 
@@ -90,9 +105,10 @@ void Signal_Stophandler();
 void ThreadClientSocket();
 void Memu(char *);
 char *mac_ntoa(unsigned char *);
-void SVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *);
-void DVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *);
-void dump_ip(ip_header *, int);
+void SVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *, eth_header *);
+void DVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *, eth_header *);
+void dump_DHCP_ip(ip_header *, int);
+void dump_ARP_ip(arp_header *, int);
 void pcap_handler_func(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
 void pcap_handler_func_lan(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
 void read_loop();
@@ -117,6 +133,9 @@ char *SendBuf_offer = {0};
 char *SendpktcBuf_offer = {0};
 char *ReceiveBuf_offer = {0};
 
+char *SendBuf_arp = {0};
+char *ReceiveBuf_arp = {0};
+
 /*Change DVGM or SVGM MODE*/
 char *ChangeMode = "default";
 
@@ -133,9 +152,6 @@ int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 
 /*Socket Server for Auto testing flag 1 : open auto ; 0 : close auto*/
 int AutoTesting = 0;
-
-/*Random Sending data*/
-int Random_send = 0;
 
 /*Record Lose packet*/
 int Receivedocsispkt = 0, Receivepktcpkt = 0;
@@ -416,8 +432,8 @@ char ArpPacket[]  = {
 0x7b, 0x22, 0x22, 0x22, 0x81, 0x00, 0x08, 0x01,
 0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 
 0x00, 0x01, 0x00, 0x1c, 0x7b, 0x22, 0x22, 0x22, 
-0xc0, 0xa8, 0x0a, 0x83, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x01, 0x00, 0x00, 
+0xc0, 0xa8, 0x0a, 0x84, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x02, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, };
 
@@ -503,7 +519,16 @@ void ThreadClientSocket()
 
 	sleep(1);
 	recvfrom(clientfd, sendserver_buffer, sizeof(sendserver_buffer)-1, 0, (struct sockaddr *)&server_addr, &cl_addr);
-	if(sendserver_buffer[0] == 0x53 && sendserver_buffer[1] == 0x45 && sendserver_buffer[2] == 0x52 && sendserver_buffer[3] == 0x56 && sendserver_buffer[4] == 0x45 && sendserver_buffer[5] == 0x52 && sendserver_buffer[6] == 0x4F && sendserver_buffer[7] == 0x50 && sendserver_buffer[8] == 0x45 && sendserver_buffer[9] == 0x4E)
+	if(sendserver_buffer[0] == 0x53 && 
+		sendserver_buffer[1] == 0x45 && 
+		sendserver_buffer[2] == 0x52 && 
+		sendserver_buffer[3] == 0x56 && 
+		sendserver_buffer[4] == 0x45 && 
+		sendserver_buffer[5] == 0x52 && 
+		sendserver_buffer[6] == 0x4F && 
+		sendserver_buffer[7] == 0x50 && 
+		sendserver_buffer[8] == 0x45 && 
+		sendserver_buffer[9] == 0x4E)
 		{
 			printf("Connect to Server\n");
 			memset(sendserver_buffer, 0, sizeof(sendserver_buffer));
@@ -571,7 +596,11 @@ void ThreadClientSocket()
 				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr, sizeof(client_addr));
 
 			}
-			else if(client_buffer[6] == 0x43 && client_buffer[7] == 0x4C && client_buffer[8] == 0x4F && client_buffer[9] == 0x53 && client_buffer[10] == 0x45)
+			else if(client_buffer[6] == 0x43 && 
+					client_buffer[7] == 0x4C && 
+					client_buffer[8] == 0x4F && 
+					client_buffer[9] == 0x53 && 
+					client_buffer[10] == 0x45)
 			{
 					printf("Socket Server close\n")	;	
 					pthread_cancel(pthreadSocketClient);
@@ -643,31 +672,38 @@ char *mac_ntoa(unsigned char *mac_d)
 }
 
 /*DHCP SVGM Mode*/
-void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc)
+void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc, eth_header *LAN_arp)
 {
 	/********************************* For LAN buffer **************************************/
 	//LAN : set & get source mac and destination mac
 	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
 	char LAN_pktc_dstmac[MAC_ADDRSTRLEN] = {}, LAN_pktc_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_arp_dstmac[MAC_ADDRSTRLEN] = {}, LAN_arp_srcmac[MAC_ADDRSTRLEN] = {};
 
 	u_int16_t LAN_docsis_type;
 	u_int16_t LAN_docsis_TPID;
 	u_int16_t LAN_pktc_type;
 	u_int16_t LAN_pktc_TPID;
+	u_int16_t LAN_arp_type;
+	u_int16_t LAN_arp_TPID;
 
 	//LAN : set mac 
 	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis -> dmac), sizeof(LAN_docsis_dstmac));
 	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis -> smac), sizeof(LAN_docsis_srcmac));
 	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc -> dmac), sizeof(LAN_pktc_dstmac));
 	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc -> smac), sizeof(LAN_pktc_srcmac));
+	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp -> dmac), sizeof(LAN_arp_dstmac));
+	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp -> smac), sizeof(LAN_arp_srcmac));
 
 	//LAN : Ethernet type
 	LAN_docsis_type = ntohs(LAN_docsis -> type);
 	LAN_pktc_type = ntohs(LAN_pktc -> type);
+	LAN_arp_type = ntohs(LAN_arp -> type);
 
 	//LAN : TPID
 	LAN_docsis_TPID = ntohs(LAN_docsis -> tpid);
 	LAN_pktc_TPID = ntohs(LAN_pktc -> tpid);
+	LAN_arp_TPID = ntohs(LAN_arp -> tpid);
 	/****************************************************************************************/
 
 	/********************************* For WAN buffer ***************************************/
@@ -688,13 +724,14 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	//WAN : TPID
 	WAN_TPID = ntohs(WAN_ethhdr -> tpid);
 	/****************************************************************************************/
-	printf("------------ %s ------------------\n",PacketMode);
+		
 		printf("------------------------------- SVGM Mode ---------------------------------------\n");
 		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
 		printf("---------------- %s ---------------- | --------------- %s --------------\n",LAN_port,WAN_port);
+	
 	if(PacketMode == "DHCP") {
-	if(DHCPBufMode == "docsis")
-	{
+	  if(DHCPBufMode == "docsis")
+	  {
 		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
 	
 		printf("Source      	: %17s        |   %17s\n",LAN_docsis_srcmac, WAN_srcmac);
@@ -706,9 +743,9 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		printf("                |   %c%c%c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308],content[309],content[310]);
 
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_docsis_TPID,WAN_TPID);
-	}
-	else if(DHCPBufMode == "pktc")
-	{
+	  }
+	  else if(DHCPBufMode == "pktc")
+	  {
 		printf("Destination 	: %17s        |   %17s\n",LAN_pktc_dstmac, WAN_dstmac);
 	
 		printf("Source      	: %17s        |   %17s\n",LAN_pktc_srcmac, WAN_srcmac);
@@ -722,47 +759,58 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_pktc_TPID,WAN_TPID);
 		
-	}
-	}
-	if(PacketMode == "ARP")
+	  }
+		/*Send buffer to ip structure*/
+		dump_DHCP_ip((ip_header*)(content + sizeof(eth_header)),length - sizeof(eth_header));
+	  }// if PacketMode == DHCP
+	else if(PacketMode == "ARP")
 	{
-		printf("--------------------------ARP------------------------------------------\n");
-		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
+		printf("------------------------------- ARP Packet ---------------------------------------\n");
+		printf("Destination 	: %17s        |   %17s\n",LAN_arp_dstmac, WAN_dstmac);
 	
-		printf("Source      	: %17s        |   %17s\n",LAN_docsis_srcmac, WAN_srcmac);
+		printf("Source      	: %17s        |   %17s\n",LAN_arp_srcmac, WAN_srcmac);
+		
+		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID,WAN_TPID);
+		
+		dump_ARP_ip((arp_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
 
 	}
-		/*Send buffer to ip structure*/
-		dump_ip((ip_header*)(content + sizeof(eth_header)),length - sizeof(eth_header));
 }
 
 
 /*DHCP DVGM Mode*/
-void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc)
+void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc, eth_header *LAN_arp)
 {
 	/********************************* For LAN buffer **************************************/
 	//LAN : set & get source mac and destination mac
 	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
 	char LAN_pktc_dstmac[MAC_ADDRSTRLEN] = {}, LAN_pktc_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_arp_dstmac[MAC_ADDRSTRLEN] = {}, LAN_arp_srcmac[MAC_ADDRSTRLEN] = {};
 
 	u_int16_t LAN_docsis_type;
 	u_int16_t LAN_docsis_TPID;
 	u_int16_t LAN_pktc_type;
 	u_int16_t LAN_pktc_TPID;
+	u_int16_t LAN_arp_type;
+	u_int16_t LAN_arp_TPID;
 
 	//LAN : set mac 
 	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis -> dmac), sizeof(LAN_docsis_dstmac));
 	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis -> smac), sizeof(LAN_docsis_srcmac));
 	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc -> dmac), sizeof(LAN_pktc_dstmac));
 	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc -> smac), sizeof(LAN_pktc_srcmac));
+	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp -> dmac), sizeof(LAN_arp_dstmac));
+	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp -> smac), sizeof(LAN_arp_srcmac));
 
 	//LAN : Ethernet type
 	LAN_docsis_type = ntohs(LAN_docsis -> type);
 	LAN_pktc_type = ntohs(LAN_pktc -> type);
+	LAN_arp_type = ntohs(LAN_arp -> type);
 
 	//LAN : TPID
 	LAN_docsis_TPID = ntohs(LAN_docsis -> tpid);
 	LAN_pktc_TPID = ntohs(LAN_pktc -> tpid);
+	LAN_arp_TPID = ntohs(LAN_arp -> tpid);
 	/****************************************************************************************/
 
 	/********************************* For WAN buffer ***************************************/
@@ -781,13 +829,14 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	WAN_type = ntohs(WAN_ethhdr -> type);
 
 	/****************************************************************************************/
-
 	
 		printf("------------------------------- DVGM Mode ---------------------------------------\n");
 		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
 		printf("---------------- %s ---------------- | ------------ %s ------------\n",LAN_port,WAN_port);
-	if(DHCPBufMode == "docsis")
-	{
+	
+	if(PacketMode == "DHCP") {
+	  if(DHCPBufMode == "docsis")
+	  {
 		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
 	
 		printf("Source      	: %17s        |   %17s\n",LAN_docsis_srcmac, WAN_srcmac);
@@ -799,9 +848,9 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		printf("                |   %c%c%c%c%c%c%c%c%c\n",content[298],content[299],content[300],content[301],content[302],content[303],content[304],content[305],content[306]);
 
 		printf("802.1Q Virtual LAN ID : %u\n",LAN_docsis_TPID);
-	}
-	else if(DHCPBufMode == "pktc")
-	{
+	  }
+	  else if(DHCPBufMode == "pktc")
+	  {
 	
 		printf("Destination 	: %17s        |   %17s\n",LAN_pktc_dstmac, WAN_dstmac);
 	
@@ -815,24 +864,35 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		printf("                  |   %c%c%c%c%c%c%c\n", content[298], content[299], content[300], content[301], content[302], content[303], content[304]);
 
 		printf("802.1Q Virtual LAN ID : %u\n", LAN_pktc_TPID);
-	}
+	  }  
+	  /*Send buffer to ip structure*/
+	  dump_DHCP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+	}// if PacketMode == DHCP
+	else if(PacketMode == "ARP")
+	{
+		printf("------------------------------- ARP Packet ---------------------------------------\n");
 		
-	/*Send buffer to ip structure*/
-	dump_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+		printf("Destination 	: %17s        |   %17s\n",LAN_arp_dstmac, WAN_dstmac);
+		
+		printf("Source      	: %17s        |   %17s\n",LAN_arp_srcmac, WAN_srcmac);
+		
+		printf("802.1Q Virtual LAN ID : %u\n", LAN_arp_TPID);
+		
+		dump_ARP_ip((arp_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+	}
 }
 
 
-void dump_ip(ip_header *ipv4, int length)
+void dump_DHCP_ip(ip_header *ipv4, int length)
 {
 		/*for discover buffer*/
 		int compare_num = 0;
-		int i = 0;
-		int x = 0;
+		int i = 0, x = 0;
 
 		/*for offer buffer*/
 		int compare_offer = 0;
-		int i_offer = 0;
-		int x_offer = 0;
+		int i_offer = 0, x_offer = 0;
+
 		if(htons(ipv4 -> ip_id) == 0xdead)
 		{
 			//Record receive docsis packet
@@ -842,7 +902,7 @@ void dump_ip(ip_header *ipv4, int length)
 
 			if(DHCPBufMode == "docsis")
 			{
-				for(;i<length;i++)
+				for(i = 0; i < length; i++)
 				{
 					if(SendBuf[i] != ReceiveBuf[i])
 					{
@@ -852,7 +912,7 @@ void dump_ip(ip_header *ipv4, int length)
 			}
 			else if(DHCPBufMode == "pktc")
 			{
-				for(;x<length;x++)
+				for(x = 0; x < length; x++)
 				{
 					if(SendpktcBuf[x] != ReceiveBuf[x])
 					{
@@ -881,13 +941,13 @@ void dump_ip(ip_header *ipv4, int length)
 		}
 		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
 		{
-			//Record receive packet
+			//Record receive pktc packet
 			Receivepktcpkt++;
 
 			ReceiveBuf_offer = (char*)ipv4;
 			if(DHCPBufMode == "docsis")
 			{
-				for(;i_offer<length;i_offer++)
+				for(i_offer = 0; i_offer < length; i_offer++)
 				{
 					if(SendBuf_offer[i_offer] != ReceiveBuf_offer[i_offer])
 					{
@@ -897,7 +957,7 @@ void dump_ip(ip_header *ipv4, int length)
 			}
 			else if(DHCPBufMode == "pktc")
 			{
-				for(;x_offer<length;x_offer++)
+				for(x_offer = 0; x_offer < length; x_offer++)
 				{
 					if(SendpktcBuf_offer[x_offer] != ReceiveBuf_offer[x_offer])
 					{
@@ -927,6 +987,33 @@ void dump_ip(ip_header *ipv4, int length)
 
 }
 
+/*typedef struct ARP_HEADER
+{
+	unsigned short arp_hr_type;// Hardware type
+	unsigned short arp_p; // protocol
+	unsigned char arp_hard_size; //Hardware size
+	unsigned char arp_pro_size; // Protocol size
+	unsigned short arp_opcode; //ARP opcode
+	unsigned char arp_sender_mac[6]; //Sender mac address
+	unsigned int arp_sender_ip; //Sender ip address
+	unsigned char arp_target_mac[6]; //Target mac address
+	unsigned int arp_target_ip; //Target ip address
+}__attribute__((__packed__)) arp_header;*/
+
+void dump_ARP_ip(arp_header *arp_ipv4, int length)
+{
+	int compare_arp = 0;
+	int i = 0, j = 0;
+	if(arp_ipv4 -> arp_sender_mac[4] == ArpPacket[10] && 
+	   arp_ipv4 -> arp_sender_mac[5] == ArpPacket[11] ) {
+
+
+
+
+	   }
+
+
+}
 
 void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
 {
@@ -935,6 +1022,9 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 
 	/*For LAN pktc buffer*/
 	eth_header *LAN_pktc_ethhdr = (eth_header*)DHCPpktcBuf;
+
+	/*For LAN ARP buffer*/
+	eth_header *LAN_arp_ethhdr = (eth_header*)ArpPacket;
 
 	//check buffer length have enough normal ethernet buffer
 	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header))
@@ -953,10 +1043,15 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	if(ChangeMode == "DVGM")
 	{
 		unsigned short DVGM_checksum = (bytes[18] << 8) | bytes[19];
-		if(DVGM_checksum == 0xdead)
+		if(DVGM_checksum == 0xdead && PacketMode == "DHCP")
 		{
 			printf("Current Send Times : %s",timebuf);
-			DVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
+			DVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
+		}
+		else if(PacketMode == "ARP" && bytes[10] == ArpPacket[10] && bytes[11] == ArpPacket[11])
+		{
+			printf("Current Send Times : %s",timebuf);
+			DVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
 		}
 	}
 
@@ -966,12 +1061,12 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 		if(SVGM_checksum == 0xdead && PacketMode == "DHCP")
 		{
 			printf("Current Send Times : %s",timebuf);
-			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
+			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
 		}
-		else if(PacketMode == "ARP")
+		else if(PacketMode == "ARP" && bytes[10] == ArpPacket[10] && bytes[11] == ArpPacket[11])
 		{
 			printf("Current Send Times : %s",timebuf);
-			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr);
+			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
 		}
 	}
 }
@@ -1081,7 +1176,7 @@ void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header,
 		
 		}
 
-		dump_ip((ip_header*)(bytes + sizeof(eth_header) - 4), header -> caplen - sizeof(eth_header) - 4);
+		dump_DHCP_ip((ip_header*)(bytes + sizeof(eth_header) - 4), header -> caplen - sizeof(eth_header) - 4);
 	}	
 }
 
@@ -1192,11 +1287,21 @@ void MACandVIDplus()
 
 			DHCPdocsisBuf[11] = 0x00;
 			DHCPpktcBuf[11] = 0x00;
+			
+			/*DHCP Bootstrap Layer MAC Add*/
+		/*	DHCPdocsisBuf[78] += 0x01;
+			DHCPpktcBuf[78] += 0x01;
 
+			DHCPdocsisBuf[79] = 0x00;
+			DHCPpktcBuf[79] = 0x00;*/
+									
 			/*ARP MAC Add*/
 			ArpPacket[10] += 0x01;
-			ArpPacket[11] += 0x00;
+			ArpPacket[11] = 0x00;
 
+			/*ARP SenderMAC Add*/
+			ArpPacket[30] += 0x01;
+			ArpPacket[31] = 0x00;
 		}
 		else
 		{
@@ -1204,8 +1309,14 @@ void MACandVIDplus()
 			DHCPdocsisBuf[11] += 0x01;
 			DHCPpktcBuf[11] += 0x01;
 
+			/*DHCP Bootstrap Layer MAC Add*/
+		/*	DHCPdocsisBuf[79] += 0x01;
+			DHCPpktcBuf[79] += 0x01;*/
+
 			/*ARP MAC Add*/
 			ArpPacket[11] += 0x01;
+			/*ARP Sender MAC Add*/
+			ArpPacket[31] += 0x01;
 		}
 	}
 	else
@@ -1216,9 +1327,19 @@ void MACandVIDplus()
 		DHCPpktcBuf[11] = 0x00;
 		DHCPdocsisBuf[11] = 0X00;
 
+		/*DHCP Bootstrap Layer MAC the last two bytes set to zero*/
+	/*	DHCPdocsisBuf[78] = 0x00;
+		DHCPpktcBuf[78] = 0x00;
+		DHCPdocsisBuf[79] = 0x00;
+		DHCPpktcBuf[79] = 0x00;
+	*/	
 		/*ARP MAC the last two bytes set to zero*/
 		ArpPacket[10] = 0x00;
 		ArpPacket[11] = 0x00;
+		
+		/*ARP Sender MAC the last two bytes set to zero*/
+		ArpPacket[30] = 0x00;
+		ArpPacket[31] = 0x00;
 	}
 
 	//vlan tag
@@ -1264,6 +1385,9 @@ void MACandVIDplus()
 
 void Option_Receive(int D_times, char sop)
 {
+	/*Random Sending data*/
+	int Random_send = 0;
+
 	char errbuf[PCAP_ERRBUF_SIZE];
 
 	/*LAN Port pcap send*/
@@ -1315,7 +1439,7 @@ void Option_Receive(int D_times, char sop)
 
 					if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						//pthread_mutex_unlock(&pcap_send_mutex);
+						pthread_mutex_unlock(&pcap_send_mutex);
 						return 1;
 					}
 					else
@@ -1326,7 +1450,7 @@ void Option_Receive(int D_times, char sop)
 					//Sending ARP Packet
 					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						//pthread_mutex_unlock(&pcap_send_mutex);
+						pthread_mutex_unlock(&pcap_send_mutex);
 						return 1;
 					}
 					else
@@ -1432,11 +1556,11 @@ void Option_Receive(int D_times, char sop)
 }
 
 
-//option
-char buf;
-
 void send_packet()
 {
+	//option
+	char buf;
+
 	//calculation send dhcp times
 	int DHCPtimes = 0;
 
@@ -1498,12 +1622,14 @@ int main(int argc,char *argv[])
 	printf("LAN Port = %s\n", LAN_port);
 	printf("WAN Port = %s\n", WAN_port);
 
+	GetEthMACaddress(WAN_port);
+	
 	Menu("default");
 
-	/*store send buf in char for compare********/
+	/*store send DHCP discover buf in char for compare********/
 	int s = 0, eth_ft = 0;
-	SendBuf = (char*)malloc(sizeof(DHCPdocsisBuf));
-	ReceiveBuf = (char*)malloc(sizeof(DHCPdocsisBuf));
+	SendBuf = malloc(sizeof(DHCPdocsisBuf));
+	ReceiveBuf = malloc(sizeof(DHCPdocsisBuf));
 
 	for(s = 18; s < sizeof(DHCPdocsisBuf); s++)
 	{
@@ -1516,12 +1642,12 @@ int main(int argc,char *argv[])
 	{
 		SendpktcBuf[eth_pk++] = DHCPpktcBuf[s_p];
 	}
-	/*******************************************/
+	/*************************************************/
 
-	/*store send offer buf in char for compare********/
+	/*store send DHCP offer buf in char for compare********/
 	int s_off = 0, eth_ftoff = 0;
-	SendBuf_offer = (char*)malloc(sizeof(DHCPdocsisBuf_offer));
-	ReceiveBuf_offer = (char*)malloc(sizeof(DHCPdocsisBuf_offer));
+	SendBuf_offer = malloc(sizeof(DHCPdocsisBuf_offer));
+	ReceiveBuf_offer = malloc(sizeof(DHCPdocsisBuf_offer));
 
 	for(s_off = 14; s_off < sizeof(DHCPdocsisBuf_offer); s_off++)
 	{
@@ -1529,12 +1655,23 @@ int main(int argc,char *argv[])
 	}
 
 	int s_poff = 0, eth_pkoff = 0;
-	SendpktcBuf_offer = (char*)malloc(sizeof(DHCPpktcBuf_offer));
+	SendpktcBuf_offer = malloc(sizeof(DHCPpktcBuf_offer));
 	for(s_poff = 14; s_poff < sizeof(DHCPpktcBuf_offer); s_poff++)
 	{
 		SendpktcBuf_offer[eth_pkoff++] = DHCPpktcBuf_offer[s_poff];
 	}
-	/*******************************************/
+	/*************************************************/
+
+	/*Strore send ARP buf in char for compare*********/
+	int s_arp = 0, eth_arp = 0;
+	SendBuf_arp = malloc(sizeof(ArpPacket));
+	ReceiveBuf_arp = malloc(sizeof(ArpPacket));
+
+	for(s_arp = 14; s_arp < sizeof(ArpPacket); s_arp++)
+	{
+		SendBuf_arp[eth_arp++] = ArpPacket[s_arp];
+	}
+	/*************************************************/
 
 	int pth_send = 0, pth_read = 0, pth_read_lan = 0;
 	int pth_status = 0, pth_socket = 0;
@@ -1578,7 +1715,7 @@ int main(int argc,char *argv[])
 
 
 //Not in use
-/*void GetEthMACaddress(char eth_port[])
+void GetEthMACaddress(char eth_port[])
 {
 	int fd;
 	struct ifreq ifr;
@@ -1594,12 +1731,18 @@ int main(int argc,char *argv[])
 
 	mac = (unsigned char*) ifr.ifr_hwaddr.sa_data;
 
-	ArpPacket[6] = mac[0];
-	ArpPacket[7] = mac[1];
-	ArpPacket[8] = mac[2];
-	ArpPacket[9] = mac[3];
-	ArpPacket[10] = mac[4];
-	ArpPacket[11] = mac[5];
+	DHCPdocsisBuf_offer[6] = mac[0];
+	DHCPdocsisBuf_offer[7] = mac[1];
+	DHCPdocsisBuf_offer[8] = mac[2];
+	DHCPdocsisBuf_offer[9] = mac[3];
+	DHCPdocsisBuf_offer[10] = mac[4];
+	DHCPdocsisBuf_offer[11] = mac[5];
 
-}*/
+	DHCPpktcBuf_offer[6] = mac[0];
+	DHCPpktcBuf_offer[7] = mac[1];
+	DHCPpktcBuf_offer[8] = mac[2];
+	DHCPpktcBuf_offer[9] = mac[3];
+	DHCPpktcBuf_offer[10] = mac[4];
+	DHCPpktcBuf_offer[11] = mac[5];
+}
 
