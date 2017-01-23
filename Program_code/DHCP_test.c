@@ -149,12 +149,13 @@ unsigned int Running_Times = 0, KeepRunning = 0;
 /*Record Compare data False times and True times*/
 int CompareFalseTimes = 0, CompareTrueTimes = 0;
 int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
+int CompareFalseTimes_arp = 0, CompareTrueTimes_arp = 0;
 
 /*Socket Server for Auto testing flag 1 : open auto ; 0 : close auto*/
 int AutoTesting = 0;
 
 /*Record Lose packet*/
-int Receivedocsispkt = 0, Receivepktcpkt = 0;
+int Receivedocsispkt = 0, Receivepktcpkt = 0, Receivearppkt = 0;;
 
 /*Pthread lock*/
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -429,9 +430,9 @@ char DHCPpktcBuf_offer[] = {
 Arp[6~11] -> Source MAC*/
 char ArpPacket[]  = {
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
-0x7b, 0x22, 0x22, 0x22, 0x81, 0x00, 0x08, 0x01,
+0x7b, 0x22, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01,
 0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 
-0x00, 0x01, 0x00, 0x1c, 0x7b, 0x22, 0x22, 0x22, 
+0x00, 0x01, 0x00, 0x1c, 0x7b, 0x22, 0x00, 0x00, 
 0xc0, 0xa8, 0x0a, 0x84, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x02, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -566,6 +567,10 @@ void ThreadClientSocket()
 					DHCPdocsisBuf[15] = (Start_VID) & 0xff;
 					DHCPpktcBuf[14] = (Start_VID >> 8) & 0xff;
 					DHCPpktcBuf[15] = (Start_VID) & 0xff;
+					
+					/*Set ARP VLAN ID*/
+					ArpPacket[14] = (Start_VID >> 8) & 0xff;
+					ArpPacket[15] = (Start_VID) & 0xff;
 				}
 				
 				if(Running_Times == 0)
@@ -724,7 +729,9 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	//WAN : TPID
 	WAN_TPID = ntohs(WAN_ethhdr -> tpid);
 	/****************************************************************************************/
-		
+	
+	printf("%s.%s.%s.%s.%s\n",PacketMode,PacketMode,PacketMode,PacketMode,PacketMode);
+
 		printf("------------------------------- SVGM Mode ---------------------------------------\n");
 		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
 		printf("---------------- %s ---------------- | --------------- %s --------------\n",LAN_port,WAN_port);
@@ -770,11 +777,15 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	
 		printf("Source      	: %17s        |   %17s\n",LAN_arp_srcmac, WAN_srcmac);
 		
+		printf("Sender IP      	: %u.%u.%u.%u            |   %u.%u.%u.%u\n",ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, content[32]&0xff, content[33]&0xff, content[34]&0xff, content[35]&0xff);
+		
+		printf("Tender IP      	: %u.%u.%u.%u            |   %u.%u.%u.%u\n",ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, content[42]&0xff, content[43]&0xff, content[44]&0xff, content[45]&0xff);
+		
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID,WAN_TPID);
 		
 		dump_ARP_ip((arp_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
 
-	}
+	}//if PacketMode == ARP
 }
 
 
@@ -876,6 +887,11 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		
 		printf("Source      	: %17s        |   %17s\n",LAN_arp_srcmac, WAN_srcmac);
 		
+		printf("Sender IP      	: %d.%d.%d.%d            |   %d.%d.%d.%d\n",ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, content[28]%0xff, content[29]%0xff, content[30]%0xff, content[31]%0xff);
+		
+		printf("Tender IP      	: %d.%d.%d.%d            |   %d.%d.%d.%d\n",ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, content[38]&0xff, content[39]&0xff, content[40]&0xff, content[41]&0xff);
+		
+		
 		printf("802.1Q Virtual LAN ID : %u\n", LAN_arp_TPID);
 		
 		dump_ARP_ip((arp_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
@@ -938,7 +954,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			if((!compare_num) == 0)
 				StopLoopRunning = 1;
 
-		}
+		}//htons(ipv4 -> ip_id)
 		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
 		{
 			//Record receive pktc packet
@@ -983,7 +999,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			{
 				StopLoopRunning = 1;
 			}*/
-		}
+		}//htons(ipv4 -> ip_sum)
 
 }
 
@@ -1002,17 +1018,44 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 
 void dump_ARP_ip(arp_header *arp_ipv4, int length)
 {
+	//Change receive buf that sender ip
+	char receive_sender_ip[16] = {0};
+	inet_ntop(AF_INET, &arp_ipv4 -> arp_sender_ip, receive_sender_ip, sizeof(receive_sender_ip));
+	
+
+	//Change send buf that sender ip
+	char send_sender_ip[16] = {0};
+	sprintf(send_sender_ip, "%d.%d.%d.%d", ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff);
+	
 	int compare_arp = 0;
 	int i = 0, j = 0;
-	if(arp_ipv4 -> arp_sender_mac[4] == ArpPacket[10] && 
-	   arp_ipv4 -> arp_sender_mac[5] == ArpPacket[11] ) {
 
+	//According to receive buf and send buf all have sender ip to compare.
+	//Avoid the others data mix in it.
+	if(!strcmp(send_sender_ip,receive_sender_ip)) {
+		//Record Receive packet 
+		Receivearppkt++;
 
+		ReceiveBuf_arp = (char*)arp_ipv4;
+		
+		for(i = 0;i < length; i++)
+		{
+			if(SendBuf_arp[i] != ReceiveBuf_arp[i])
+				compare_arp += 1;
+		}
 
+		printf("\n");
+		printf("***************** ARP Compare Data **********************************\n");
+		printf(" 'ARP' Compare data --------> %s\n", !compare_arp ? "true" : "false");
+		printf("*****************************************************************\n");
+				
+		if(compare_arp > 0)
+			CompareFalseTimes_arp += 1;
+		else
+			CompareTrueTimes_arp += 1;
 
-	   }
-
-
+	  	memset(ReceiveBuf_arp, 0, length);
+	  }
 }
 
 void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
@@ -1063,7 +1106,8 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 			printf("Current Send Times : %s",timebuf);
 			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
 		}
-		else if(PacketMode == "ARP" && bytes[10] == ArpPacket[10] && bytes[11] == ArpPacket[11])
+		//else if(PacketMode == "ARP" && bytes[10] == ArpPacket[10] && bytes[11] == ArpPacket[11])
+		else if(PacketMode == "ARP")
 		{
 			printf("Current Send Times : %s",timebuf);
 			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
@@ -1189,12 +1233,14 @@ void read_loop()
 	struct bpf_program bpf_p;
 	bpf_u_int32 net,mask;
 
-	char *protocol_filter;
+	char protocol_filter[16];
+
 
 	if(PacketMode == "DHCP")
-		protocol_filter = "udp";
+		sprintf(protocol_filter,"%s","udp");
 	else if(PacketMode == "ARP")
-		protocol_filter = "arp";
+		sprintf(protocol_filter,"%s","arp");
+		//protocol_filter = "arp";
 
 	//CASTLE USEING : ubuntu 12.04
 	p_read = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
@@ -1302,6 +1348,10 @@ void MACandVIDplus()
 			/*ARP SenderMAC Add*/
 			ArpPacket[30] += 0x01;
 			ArpPacket[31] = 0x00;
+
+			SendBuf_arp[12] += 0x01;
+			SendBuf_arp[13] = 0x00;
+
 		}
 		else
 		{
@@ -1317,6 +1367,7 @@ void MACandVIDplus()
 			ArpPacket[11] += 0x01;
 			/*ARP Sender MAC Add*/
 			ArpPacket[31] += 0x01;
+			SendBuf_arp[13] += 0x01;
 		}
 	}
 	else
@@ -1340,6 +1391,9 @@ void MACandVIDplus()
 		/*ARP Sender MAC the last two bytes set to zero*/
 		ArpPacket[30] = 0x00;
 		ArpPacket[31] = 0x00;
+
+		SendBuf_arp[12] = 0x00;
+		SendBuf_arp[12] = 0x00;
 	}
 
 	//vlan tag
@@ -1377,8 +1431,8 @@ void MACandVIDplus()
 		DHCPdocsisBuf[15] = 0X01;
 		
 		/*ARP VLAN ID the last two bytes set to defalt 2049*/
-		ArpPacket[14] += 0x08;
-		ArpPacket[15] += 0x01;
+		ArpPacket[14] = 0x08;
+		ArpPacket[15] = 0x01;
 	}
 }
 
@@ -1525,6 +1579,12 @@ void Option_Receive(int D_times, char sop)
 		printf("True  : %d\n",CompareTrueTimes);
 		printf("Discover -> Not arrive receive Port packet\n");
 		printf("Lose Packet : %d\n",D_times - Receivedocsispkt);
+		printf("..................................................\n");
+		printf("ARP -> Compare Send packet and Receive packet\n");
+		printf("False : %d\n",CompareFalseTimes_arp);
+		printf("True  : %d\n",CompareTrueTimes_arp);
+		printf("ARP -> Not arrive receive Port packet\n");
+		printf("Lose Packet : %d\n",D_times - Receivearppkt);
 		printf("\n");
 		printf("--------LAN  <== <== <== <== <== <==   WAN--------\n");
 		printf("OFFER -> Compare Send packet and Receive packet\n");
@@ -1540,19 +1600,24 @@ void Option_Receive(int D_times, char sop)
 		CompareTrueTimes = 0;
 		CompareFalseTimes_offer = 0;
 		CompareTrueTimes_offer = 0;
+		CompareTrueTimes_arp = 0;
+		CompareFalseTimes_arp = 0;
 
 		//Init Lose packet record count
 		Receivedocsispkt = 0;
 		Receivepktcpkt = 0;
+		Receivearppkt = 0;
+
 		KeepRunning = 0;
 		Running_Times = 0;
 		AutoTesting = 0;
 		StopLoopRunning = 0;
 		D_times = 0;
 		Menu("default");
+		/******************************/
+		
 		pcap_close(p_wan);
 		pcap_close(p_lan);
-		/******************************/
 }
 
 
@@ -1667,7 +1732,7 @@ int main(int argc,char *argv[])
 	SendBuf_arp = malloc(sizeof(ArpPacket));
 	ReceiveBuf_arp = malloc(sizeof(ArpPacket));
 
-	for(s_arp = 14; s_arp < sizeof(ArpPacket); s_arp++)
+	for(s_arp = 18; s_arp < sizeof(ArpPacket); s_arp++)
 	{
 		SendBuf_arp[eth_arp++] = ArpPacket[s_arp];
 	}
