@@ -458,17 +458,15 @@ void Signal_Stophandler()
 }*/
 
 
-/*socket client test*/
-int clientfd;
-struct sockaddr_in client_addr;
-struct sockaddr_in server_addr;
-int cl_addr = sizeof(struct sockaddr_in);
-char client_buffer[128];
-char sendserver_buffer[128];
-
 /*Client socket for use*/
 void ThreadClientSocket()
 {	
+	int clientfd;
+	struct sockaddr_in client_addr;
+	struct sockaddr_in server_addr;
+	int cl_addr = sizeof(struct sockaddr_in);
+	char client_buffer[128];
+	
 	int GetTimesValue = 0;
 	int GetStartVID = 0;
 	fd_set rfds;
@@ -1101,6 +1099,7 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	{
 		unsigned short SVGM_checksum = (bytes[22] << 8) | bytes[23];
 		sprintf(receive_sender_ip, "%d.%d.%d.%d", bytes[32]&0xff, bytes[33]&0xff, bytes[34]&0xff, bytes[35]&0xff);
+		
 		if(SVGM_checksum == 0xdead && PacketMode == "DHCP")
 		{
 			printf("Current Send Times : %s", timebuf);
