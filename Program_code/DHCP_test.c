@@ -782,6 +782,7 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID,WAN_TPID);
 		
+		//calculate wrong vlan id
 		if(WAN_TPID > 20)
 			f_times++;
 
@@ -1060,7 +1061,7 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	/*For LAN ARP buffer*/
 	eth_header *LAN_arp_ethhdr = (eth_header*)ArpPacket;
 
-	//check buffer length have enough normal ethernet buffer
+	//check buffer length is enough normal ethernet buffer
 	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header))
 	{
 		return;
@@ -1222,7 +1223,7 @@ void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header,
 	}	
 }
 
-
+/*Use to filter UDP or ARP buffer and keep reading WAN port buffer*/
 void read_loop()
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -1272,6 +1273,8 @@ void read_loop()
 	pcap_close(p_read);
 }
 
+
+/*Use to filter udp buffer and keep reading LAN port buffer*/
 void read_loop_lan()
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -1593,6 +1596,7 @@ void Option_Receive(int D_times, char sop)
 		printf("***************************************************\n");
 		printf("\n");
 
+		//show wrong vlan id
 		printf("Only for wrong vlan id appear times : %d\n",f_times);
 
 		/***** Init default value *****/
