@@ -164,9 +164,6 @@ pthread_mutex_t pcap_read_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*Sending Packet for DHCP or ARP*/
 char *PacketMode = "default";
 
-/*Record wrong vlan id appear times*/
-int f_times = 0;
-
 /*2293 0x08 0x2D*/
 /*mac default 0x00 0x1c 0x7b 0x11 0x11 0x12*/
 /*DHCP Discover buffer : docsis buffer*/
@@ -466,6 +463,7 @@ void ThreadClientSocket()
 	struct sockaddr_in server_addr;
 	int cl_addr = sizeof(struct sockaddr_in);
 	char client_buffer[128];
+	char sendserver_buffer[128];
 	
 	int GetTimesValue = 0;
 	int GetStartVID = 0;
@@ -782,10 +780,6 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 		
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID,WAN_TPID);
 		
-		//calculate wrong vlan id
-		if(WAN_TPID > 20)
-			f_times++;
-
 		dump_ARP_ip((arp_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
 
 	}//if PacketMode == ARP
@@ -1202,8 +1196,8 @@ void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header,
 			printf("Source      	: %17s        |   %17s\n",WAN_docsis_srcmac_offer, LAN_srcmac_offer);
 			
 			printf("Destination IP  : %s            |   %u.%u.%u.%u\n",docsis_dst, DHCPdocsisBuf_offer[30] & 0xff, DHCPdocsisBuf_offer[31] & 0xff, DHCPdocsisBuf_offer[32] & 0xff,DHCPdocsisBuf_offer[33] & 0xff);
-			printf("Source IP       : %s             |   %u.%u.%u.%u\n",docsis_src, DHCPdocsisBuf_offer[26] & 0xff, DHCPdocsisBuf_offer[27] & 0xff, DHCPdocsisBuf_offer[28] & 0xff,DHCPdocsisBuf_offer[29] & 0xff);
-			printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",WAN_docsis_type,LAN_type);
+			printf("Source IP       : %s             |   %u.%u.%u.%u\n",docsis_src, DHCPdocsisBuf_offer[26] & 0xff, DHCPdocsisBuf_offer[27] & 0xff, DHCPdocsisBuf_offer[28] & 0xff, DHCPdocsisBuf_offer[29] & 0xff);
+			printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",WAN_docsis_type, LAN_type);
 		
 		}
 		else if(DHCPBufMode == "pktc")
@@ -1212,10 +1206,10 @@ void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header,
 			printf("Destination 	: %17s        |   %17s\n",WAN_pktc_dstmac_offer, LAN_dstmac_offer);
 	
 			printf("Source      	: %17s        |   %17s\n",WAN_pktc_srcmac_offer, LAN_srcmac_offer);
-			printf("Destination IP  : %s           |   %u.%u.%u.%u\n",pktc_dst, DHCPpktcBuf_offer[30] & 0xff, DHCPpktcBuf_offer[31] & 0xff, DHCPpktcBuf_offer[32] & 0xff,DHCPpktcBuf_offer[33] & 0xff);
-			printf("Source IP       : %s             |   %u.%u.%u.%u\n",pktc_src, DHCPpktcBuf_offer[26] & 0xff, DHCPpktcBuf_offer[27] & 0xff, DHCPpktcBuf_offer[28] & 0xff,DHCPpktcBuf_offer[29] & 0xff);
+			printf("Destination IP  : %s           |   %u.%u.%u.%u\n",pktc_dst, DHCPpktcBuf_offer[30] & 0xff, DHCPpktcBuf_offer[31] & 0xff, DHCPpktcBuf_offer[32] & 0xff, DHCPpktcBuf_offer[33] & 0xff);
+			printf("Source IP       : %s             |   %u.%u.%u.%u\n",pktc_src, DHCPpktcBuf_offer[26] & 0xff, DHCPpktcBuf_offer[27] & 0xff, DHCPpktcBuf_offer[28] & 0xff, DHCPpktcBuf_offer[29] & 0xff);
 	
-			printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",WAN_pktc_type,LAN_type);
+			printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",WAN_pktc_type, LAN_type);
 		
 		}
 
@@ -1230,7 +1224,7 @@ void read_loop()
 	pcap_t *p_read;
 
 	struct bpf_program bpf_p;
-	bpf_u_int32 net,mask;
+	bpf_u_int32 net, mask;
 
 	char protocol_filter[16];
 
@@ -1239,7 +1233,6 @@ void read_loop()
 		sprintf(protocol_filter,"%s","udp");
 	else if(PacketMode == "ARP")
 		sprintf(protocol_filter,"%s","arp");
-		//protocol_filter = "arp";
 
 	//CASTLE USEING : ubuntu 12.04
 	p_read = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
@@ -1281,7 +1274,7 @@ void read_loop_lan()
 	pcap_t *p_read;
 
 	struct bpf_program bpf_p;
-	bpf_u_int32 net,mask;
+	bpf_u_int32 net, mask;
 
 	//read lan port
 	pcap_t *p_read_lan;
@@ -1556,10 +1549,7 @@ void Option_Receive(int D_times, char sop)
 
 					pthread_mutex_unlock(&pcap_send_mutex);
 			}
-		/*	if(client_buffer[0] == 0x53 && client_buffer[1] == 0x54 && client_buffer[2] == 0x4F && client_buffer[3] == 0x50)
-			{
-				StopLoopRunning = 1;
-			}*/
+			
 			sleep(1);
 
 			/*Add mac and vid function*/
@@ -1596,9 +1586,6 @@ void Option_Receive(int D_times, char sop)
 		printf("***************************************************\n");
 		printf("\n");
 
-		//show wrong vlan id
-		printf("Only for wrong vlan id appear times : %d\n",f_times);
-
 		/***** Init default value *****/
 		CompareFalseTimes = 0;
 		CompareTrueTimes = 0;
@@ -1619,8 +1606,6 @@ void Option_Receive(int D_times, char sop)
 		D_times = 0;
 		Menu("default");
 		/******************************/
-		//for test
-		f_times = 0;
 			
 		pcap_close(p_wan);
 		pcap_close(p_lan);
