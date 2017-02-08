@@ -1,5 +1,13 @@
 #include "lib_file.h"
 
+/***********Note***********/
+
+In C ,functions can return any type except arrays and functions. We can get around this 
+limitation by returning pointer to array or pointer to function.
+
+/*************************/
+
+
 
 /*********************#define printf(format)************************************/
 //define another printf interface , use in format
@@ -109,7 +117,7 @@ printf("%d\n", x ? 0 : 1);
 ans -> 0;
 
 
-/*define the variable,avoid the other files use it*/
+/*define the variable,avoid the other files to repeat define it*/
 extern int aa;
 //It is need extra give the values.
 aa = 0;
@@ -184,3 +192,25 @@ Number 2 : 11
 
 
 /****************************************************************************/
+
+/******************************Reverse String********************************/
+char str1[100];
+char *fun(char str[])
+{
+	static int i = 0;
+
+	if(*str)
+	{
+		fun(str+1);
+		str1[i] = *str;
+		i++;
+	}
+	return str1;
+}
+int main()
+{
+	char str[] = "abcdef123456";
+	printf("%s\n", fun(str));
+}
+/****************************************************************************/
+

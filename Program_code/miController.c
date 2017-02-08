@@ -54,7 +54,9 @@
 #define FALSE 0
 #define TRUE 1
 
-char *MAPDEVICE = "/dev/ttyUSB0";
+char location[] = "/dev/tty";
+char MAPDEVICE[] = "USB0";
+//char *MAPDEVICE = "/dev/ttyUSB0";
 char vlan_mode[32] = {0};
 char MainBuffer[32];
 int Runtimes = 0, Autotest = 0;
@@ -98,14 +100,22 @@ pthread_t pthreadComPort;
 
 int main(int argc, char *argv[])
 {
-
+	int i = 0;
 	int pth_socserver = 0, pth_usbport = 0;
 	//signal(SIGINT,&StopSignal);
 	//signal(SIGALARM,);
-	if(argc == 2)
+	printf("\n");
+	if(argc != 2)
 	{
-		MAPDEVICE = argv[1];
+		sprintf(location, "%s%s", location, MAPDEVICE);
 	}
+	else if(argc == 2)
+	{
+		strcpy(MAPDEVICE, argv[1]);
+		sprintf(location, "%s%s", location, MAPDEVICE);
+	}
+	printf("Current Com port number is %s\n", location);
+	printf("\n");
 
 	MainMenu();
 
@@ -153,10 +163,10 @@ void ThreadCmcControl()
 	//clear w_o_buf to zero
 	memset(w_o_buf, 0, sizeof(w_o_buf));
 
-	fd = open(MAPDEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	fd = open(location, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if( fd < 0 )
 	{
-		perror(MAPDEVICE);
+		perror(location);
 	}
 	
 	fcntl(fd, F_SETFL, FNDELAY);
