@@ -99,6 +99,17 @@ typedef struct ARP_HEADER
 
 
 
+/*Socket client buffer*/
+//ASCII C L I E N T O P E N: 
+char *CLIENTOPEN = "CLIENTOPEN";
+
+
+/*Socket Server buffer*/
+//ASCII S E R V E R O P E N: 
+char *SERVEROPEN = "SERVEROPEN";
+
+//ASCII C L O S E:
+char *CLIENTCLOSE = "CLOSE";
 
 
 /*2293 0x08 0x2D*/
@@ -375,5 +386,23 @@ char ArpPacket[]  = {
 0x00, 0x00, 0x00, 0x00, };
 
 
+/*use for fpga from LAN Port to WAN Port*/
+char *SendBuf = {0};
+char *SendpktcBuf = {0};
+char *ReceiveBuf = {0};
 
+char *SendBuf_offer = {0};
+char *SendpktcBuf_offer = {0};
+char *ReceiveBuf_offer = {0};
 
+char *SendBuf_arp = {0};
+char *ReceiveBuf_arp = {0};
+
+/*Use to share memory function like malloc*/
+void *xmalloc(size_t size);
+
+/*Insert send buffer*/
+void InsertSendBuffer();
+
+/*mac address and vid add by sending times*/
+void MACandVIDplus();

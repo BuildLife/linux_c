@@ -31,28 +31,14 @@ void pcap_handler_func(unsigned char *, const struct pcap_pkthdr *, const unsign
 void pcap_handler_func_lan(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
 void read_loop();
 void read_loop_lan();
-void MACandVIDplus();
 void Option_Receive(int, char);
 void send_packet();
 void GetEthMACaddress(char []);
-void *xmalloc(size_t );
 
 
 /*Ethernet send port and receive port*/
 char *LAN_port = "eth14";
 char *WAN_port = "eth2";
-
-/*use for fpga from LAN Port to WAN Port*/
-char *SendBuf = {0};
-char *SendpktcBuf = {0};
-char *ReceiveBuf = {0};
-
-char *SendBuf_offer = {0};
-char *SendpktcBuf_offer = {0};
-char *ReceiveBuf_offer = {0};
-
-char *SendBuf_arp = {0};
-char *ReceiveBuf_arp = {0};
 
 /*Change DVGM or SVGM MODE*/
 char *ChangeMode = "default";
@@ -82,25 +68,13 @@ pthread_mutex_t pcap_read_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*Sending Packet for DHCP or ARP*/
 char *PacketMode = "default";
 
-
-
 int StopLoopRunning = 0;
-
 
 /*Ctrl+c change the values for stop read/send while*/
 void Signal_Stophandler()
 {
 	StopLoopRunning = 1;
 }
-
-/*For test signal alarm*/
-/*void SignalAlarmProcessStatus(int signo)
-{
-	alarm(10);
-	printf("set alarm status for check\n");
-	//signal(SIGALRM,SignalAlarmProcessStatus);
-}*/
-
 
 /*Client socket for use*/
 void ThreadClientSocket()
@@ -134,7 +108,6 @@ void ThreadClientSocket()
 	bzero(&client_addr, sizeof(client_addr));
 	client_addr.sin_family = AF_INET;
 	client_addr.sin_port = htons(9998);
-	//client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	inet_pton(AF_INET, "127.0.0.1", &client_addr.sin_addr.s_addr);
 
 	/*tcp socket */
@@ -149,36 +122,20 @@ void ThreadClientSocket()
 	char testmode = '0';
 
 	//install CLIENTOPEN command for ready send to socket server 
-	sendserver_buffer[0] = 0x43;
-	sendserver_buffer[1] = 0x4C;
-	sendserver_buffer[2] = 0x49;
-	sendserver_buffer[3] = 0x45;
-	sendserver_buffer[4] = 0x4E;
-	sendserver_buffer[5] = 0x54;
-	sendserver_buffer[6] = 0x4F;
-	sendserver_buffer[7] = 0x50;
-	sendserver_buffer[8] = 0x45;
-	sendserver_buffer[9] = 0x4E;
-
+	strcpy(sendserver_buffer, CLIENTOPEN);
+	
 	//tell socket server , client to connect
 	sendto(clientfd, sendserver_buffer, 10, 0, (struct sockaddr *)&client_addr, sizeof(client_addr));
 
 	sleep(1);
 	recvfrom(clientfd, sendserver_buffer, sizeof(sendserver_buffer)-1, 0, (struct sockaddr *)&server_addr, &cl_addr);
-	if(sendserver_buffer[0] == 0x53 && 
-		sendserver_buffer[1] == 0x45 && 
-		sendserver_buffer[2] == 0x52 && 
-		sendserver_buffer[3] == 0x56 && 
-		sendserver_buffer[4] == 0x45 && 
-		sendserver_buffer[5] == 0x52 && 
-		sendserver_buffer[6] == 0x4F && 
-		sendserver_buffer[7] == 0x50 && 
-		sendserver_buffer[8] == 0x45 && 
-		sendserver_buffer[9] == 0x4E)
-		{
-			printf("Connect to Server\n");
-			memset(sendserver_buffer, 0, sizeof(sendserver_buffer));
-		}
+		
+	if(!strcmp(sendserver_buffer, SERVEROPEN))
+	{
+		printf("Connect to Server\n");
+		//clean sendserver_buffer
+		memset(sendserver_buffer, 0, sizeof(sendserver_buffer));
+	}
 		
 	
 	//Receive message from Server controller
@@ -196,7 +153,7 @@ void ThreadClientSocket()
 
 			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
 			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
-	
+			
 			if((client_buffer[0] != 0) && (client_buffer[5] == 0x01))
 			{
 				AutoTesting = 1;
@@ -233,10 +190,6 @@ void ThreadClientSocket()
 				else if(client_buffer[0] == 2)
 					testmode = '2';
 
-				//client_buffer[5] = 0x01;
-				//send(clientfd, client_buffer, 5,0);
-				//sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr,sizeof(client_addr));
-
 				Option_Receive(0, testmode);
 
 				client_buffer[0] = 0x53;
@@ -246,12 +199,13 @@ void ThreadClientSocket()
 				sendto(clientfd, client_buffer, 5, 0, (struct sockaddr *)&client_addr, sizeof(client_addr));
 
 			}
-			else if(client_buffer[6] == 0x43 && 
+			/*else if(client_buffer[6] == 0x43 && 
 					client_buffer[7] == 0x4C && 
 					client_buffer[8] == 0x4F && 
 					client_buffer[9] == 0x53 && 
 					client_buffer[10] == 0x45)
-			{
+			{*/
+			else if(strstr(client_buffer, CLIENTCLOSE)){
 					printf("Socket Server close\n")	;	
 					pthread_cancel(pthreadSocketClient);
 			}
@@ -267,7 +221,7 @@ void Menu(char *mode)
 {
 	if(mode == "default")
 	{
-	    printf("________________ USER MENU ________________\n");
+	    printf(" _______________ USER MENU _______________ \n");
 		printf("|                                         |\n");
 		printf("| 1.SVGM MODE                             |\n");
 		printf("| 2.DVGM MODE                             |\n");
@@ -964,124 +918,6 @@ void read_loop_lan()
 }
 
 
-
-void MACandVIDplus()
-{
-	//mac
-	if(((DHCPdocsisBuf[10] & 0xff ) << 8 | DHCPdocsisBuf[11] & 0xff) < 2048)
-	{
-		if((DHCPpktcBuf[11] & 0xff) == 255)
-		{
-			/*DHCP MAC Add*/
-			DHCPdocsisBuf[10] += 0x01;
-			DHCPpktcBuf[10] += 0x01;
-
-			DHCPdocsisBuf[11] = 0x00;
-			DHCPpktcBuf[11] = 0x00;
-			
-			/*DHCP Bootstrap Layer MAC Add*/
-		/*	DHCPdocsisBuf[78] += 0x01;
-			DHCPpktcBuf[78] += 0x01;
-
-			DHCPdocsisBuf[79] = 0x00;
-			DHCPpktcBuf[79] = 0x00;*/
-									
-			/*ARP MAC Add*/
-			ArpPacket[10] += 0x01;
-			ArpPacket[11] = 0x00;
-
-			/*ARP SenderMAC Add*/
-			ArpPacket[30] += 0x01;
-			ArpPacket[31] = 0x00;
-
-			SendBuf_arp[12] += 0x01;
-			SendBuf_arp[13] = 0x00;
-
-		}
-		else
-		{
-			/*DHCP MAC Add*/
-			DHCPdocsisBuf[11] += 0x01;
-			DHCPpktcBuf[11] += 0x01;
-
-			/*DHCP Bootstrap Layer MAC Add*/
-		/*	DHCPdocsisBuf[79] += 0x01;
-			DHCPpktcBuf[79] += 0x01;*/
-
-			/*ARP MAC Add*/
-			ArpPacket[11] += 0x01;
-			/*ARP Sender MAC Add*/
-			ArpPacket[31] += 0x01;
-			SendBuf_arp[13] += 0x01;
-		}
-	}
-	else
-	{
-		/*DHCP MAC the last two bytes set to zero*/
-		DHCPpktcBuf[10] = 0x00;
-		DHCPdocsisBuf[10] = 0X00;
-		DHCPpktcBuf[11] = 0x00;
-		DHCPdocsisBuf[11] = 0X00;
-
-		/*DHCP Bootstrap Layer MAC the last two bytes set to zero*/
-	/*	DHCPdocsisBuf[78] = 0x00;
-		DHCPpktcBuf[78] = 0x00;
-		DHCPdocsisBuf[79] = 0x00;
-		DHCPpktcBuf[79] = 0x00;
-	*/	
-		/*ARP MAC the last two bytes set to zero*/
-		ArpPacket[10] = 0x00;
-		ArpPacket[11] = 0x00;
-		
-		/*ARP Sender MAC the last two bytes set to zero*/
-		ArpPacket[30] = 0x00;
-		ArpPacket[31] = 0x00;
-
-		SendBuf_arp[12] = 0x00;
-		SendBuf_arp[12] = 0x00;
-	}
-
-	//vlan tag
-	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2512 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2512)
-	{
-		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
-		{	
-			/*DHCP VLAN ID Add to next byte for keep plus*/
-			DHCPdocsisBuf[14] += 0x01;
-			DHCPpktcBuf[14] += 0x01;
-
-			DHCPdocsisBuf[15] = 0x00;
-			DHCPpktcBuf[15] = 0x00;
-			
-			/*ARP VLAN ID Add to next byte for keep plus*/
-			ArpPacket[14] += 0x01;
-			ArpPacket[15] += 0x00;
-		}
-		else
-		{
-			/*DHCP VLAN ID Add*/
-			DHCPpktcBuf[15] += 0x01;
-			DHCPdocsisBuf[15] += 0X01;
-			
-			/*ARP VLAN ID Add*/
-			ArpPacket[15] += 0x01;
-		}
-	}
-	else
-	{
-		/*DHCP VLAN ID the last two bytes set to default 2049*/
-		DHCPpktcBuf[14] = 0x08;
-		DHCPdocsisBuf[14] = 0X08;
-		DHCPpktcBuf[15] = 0x01;
-		DHCPdocsisBuf[15] = 0X01;
-		
-		/*ARP VLAN ID the last two bytes set to defalt 2049*/
-		ArpPacket[14] = 0x08;
-		ArpPacket[15] = 0x01;
-	}
-}
-
-
 void Option_Receive(int D_times, char sop)
 {
 	/*Random Sending data*/
@@ -1266,7 +1102,7 @@ void Option_Receive(int D_times, char sop)
 void send_packet()
 {
 	//option
-	char buf;
+	char Cmdbuf;
 
 	//calculation send dhcp times
 	int DHCPtimes = 0;
@@ -1274,17 +1110,17 @@ void send_packet()
 	//use in socket client
 	int pth_socket = 0;
 
-	while((buf = fgetc(stdin)) != EOF)
+	while((Cmdbuf = fgetc(stdin)) != EOF)
 	{
-		if(buf == '1' || buf == '2')
+		if(Cmdbuf == '1' || Cmdbuf == '2')
 		{
-			Option_Receive(DHCPtimes, buf);
+			Option_Receive(DHCPtimes, Cmdbuf);
 		}
-		else if(buf == '3')
+		else if(Cmdbuf == '3')
 		{
 			exit(0);
 		}
-		else if(buf == '4')
+		else if(Cmdbuf == '4')
 		{
 			/*Client Socket*/
 			pth_socket = pthread_create(&pthreadSocketClient, NULL, (void*)ThreadClientSocket, NULL);
@@ -1297,7 +1133,7 @@ void send_packet()
 			send_packet();
 			pthread_join(pthreadSocketClient, NULL);
 		}
-		else if(buf == 'h' || buf == 'H')
+		else if(Cmdbuf == 'h' || Cmdbuf == 'H')
 		{
 			Menu("default");
 		}
@@ -1309,9 +1145,6 @@ int main(int argc,char *argv[])
 
 	/*signal function*/
 	signal(SIGINT, Signal_Stophandler);
-
-	/*test catch sigurg*/
-	//signal(SIGURG, sigurg);
 	
 	if(argc == 3)
 	{
@@ -1327,52 +1160,8 @@ int main(int argc,char *argv[])
 	
 	Menu("default");
 
-	/*store send DHCP discover buf in char for compare********/
-	int s = 0, eth_ft = 0;
-	SendBuf = xmalloc(sizeof(DHCPdocsisBuf));
-	ReceiveBuf = xmalloc(sizeof(DHCPdocsisBuf));
-
-	for(s = 18; s < sizeof(DHCPdocsisBuf); s++)
-	{
-		SendBuf[eth_ft++] = DHCPdocsisBuf[s];
-	}
-
-	int s_p = 0, eth_pk = 0;
-	SendpktcBuf = xmalloc(sizeof(DHCPpktcBuf));
-	for(s_p = 18; s_p < sizeof(DHCPpktcBuf); s_p++)
-	{
-		SendpktcBuf[eth_pk++] = DHCPpktcBuf[s_p];
-	}
-	/*************************************************/
-
-	/*store send DHCP offer buf in char for compare********/
-	int s_off = 0, eth_ftoff = 0;
-	SendBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
-	ReceiveBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
-
-	for(s_off = 14; s_off < sizeof(DHCPdocsisBuf_offer); s_off++)
-	{
-		SendBuf_offer[eth_ftoff++] = DHCPdocsisBuf_offer[s_off];
-	}
-
-	int s_poff = 0, eth_pkoff = 0;
-	SendpktcBuf_offer = xmalloc(sizeof(DHCPpktcBuf_offer));
-	for(s_poff = 14; s_poff < sizeof(DHCPpktcBuf_offer); s_poff++)
-	{
-		SendpktcBuf_offer[eth_pkoff++] = DHCPpktcBuf_offer[s_poff];
-	}
-	/*************************************************/
-
-	/*Strore send ARP buf in char for compare*********/
-	int s_arp = 0, eth_arp = 0;
-	SendBuf_arp = xmalloc(sizeof(ArpPacket));
-	ReceiveBuf_arp = xmalloc(sizeof(ArpPacket));
-
-	for(s_arp = 18; s_arp < sizeof(ArpPacket); s_arp++)
-	{
-		SendBuf_arp[eth_arp++] = ArpPacket[s_arp];
-	}
-	/*************************************************/
+	/*Insert send buffer for compare receive buffer by define in lib_file.h*/
+	InsertSendBuffer();
 
 	int pth_send = 0, pth_read = 0, pth_read_lan = 0;
 	int pth_status = 0, pth_socket = 0;
@@ -1408,6 +1197,186 @@ int main(int argc,char *argv[])
 	return 0;
 }
 
+/*Use to share memory function like malloc*/
+void *xmalloc(size_t size)
+{
+	void *p;
+	p = malloc(size);
+
+	if(!p)
+	{
+		perror("xmalloc");
+		exit(EXIT_FAILURE);
+	}
+	return p;
+}
+
+
+void InsertSendBuffer()
+{
+/*store send DHCP discover buf in char for compare********/
+	int s_dis = 0, eth_ft = 0;
+	SendBuf = xmalloc(sizeof(DHCPdocsisBuf));
+	ReceiveBuf = xmalloc(sizeof(DHCPdocsisBuf));
+
+	for(s_dis = 18; s_dis < sizeof(DHCPdocsisBuf); s_dis++)
+	{
+		SendBuf[eth_ft++] = DHCPdocsisBuf[s_dis];
+	}
+
+	int s_pkt = 0, eth_pk = 0;
+	SendpktcBuf = xmalloc(sizeof(DHCPpktcBuf));
+	for(s_pkt = 18; s_pkt < sizeof(DHCPpktcBuf); s_pkt++)
+	{
+		SendpktcBuf[eth_pk++] = DHCPpktcBuf[s_pkt];
+	}
+	/*************************************************/
+
+	/*store send DHCP offer buf in char for compare********/
+	int s_off = 0, eth_ftoff = 0;
+	SendBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
+	ReceiveBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
+
+	for(s_off = 14; s_off < sizeof(DHCPdocsisBuf_offer); s_off++)
+	{
+		SendBuf_offer[eth_ftoff++] = DHCPdocsisBuf_offer[s_off];
+	}
+
+	int s_poff = 0, eth_pkoff = 0;
+	SendpktcBuf_offer = xmalloc(sizeof(DHCPpktcBuf_offer));
+	for(s_poff = 14; s_poff < sizeof(DHCPpktcBuf_offer); s_poff++)
+	{
+		SendpktcBuf_offer[eth_pkoff++] = DHCPpktcBuf_offer[s_poff];
+	}
+	/*************************************************/
+
+	/*Strore send ARP buf in char for compare*********/
+	int s_arp = 0, eth_arp = 0;
+	SendBuf_arp = xmalloc(sizeof(ArpPacket));
+	ReceiveBuf_arp = xmalloc(sizeof(ArpPacket));
+
+	for(s_arp = 18; s_arp < sizeof(ArpPacket); s_arp++)
+	{
+		SendBuf_arp[eth_arp++] = ArpPacket[s_arp];
+	}
+	/*************************************************/
+}
+
+void MACandVIDplus()
+{
+	//mac
+	if(((DHCPdocsisBuf[10] & 0xff ) << 8 | DHCPdocsisBuf[11] & 0xff) < 2048)
+	{
+		if((DHCPpktcBuf[11] & 0xff) == 255)
+		{
+			/*DHCP MAC Add*/
+			DHCPdocsisBuf[10] += 0x01;
+			DHCPpktcBuf[10] += 0x01;
+
+			DHCPdocsisBuf[11] = 0x00;
+			DHCPpktcBuf[11] = 0x00;
+			
+			/*DHCP Bootstrap Layer MAC Add*/
+		/*	DHCPdocsisBuf[78] += 0x01;
+			DHCPpktcBuf[78] += 0x01;
+
+			DHCPdocsisBuf[79] = 0x00;
+			DHCPpktcBuf[79] = 0x00;*/
+									
+			/*ARP MAC Add*/
+			ArpPacket[10] += 0x01;
+			ArpPacket[11] = 0x00;
+
+			/*ARP SenderMAC Add*/
+			ArpPacket[30] += 0x01;
+			ArpPacket[31] = 0x00;
+
+			SendBuf_arp[12] += 0x01;
+			SendBuf_arp[13] = 0x00;
+
+		}
+		else
+		{
+			/*DHCP MAC Add*/
+			DHCPdocsisBuf[11] += 0x01;
+			DHCPpktcBuf[11] += 0x01;
+
+			/*DHCP Bootstrap Layer MAC Add*/
+		/*	DHCPdocsisBuf[79] += 0x01;
+			DHCPpktcBuf[79] += 0x01;*/
+
+			/*ARP MAC Add*/
+			ArpPacket[11] += 0x01;
+			/*ARP Sender MAC Add*/
+			ArpPacket[31] += 0x01;
+			SendBuf_arp[13] += 0x01;
+		}
+	}
+	else
+	{
+		/*DHCP MAC the last two bytes set to zero*/
+		DHCPpktcBuf[10] = 0x00;
+		DHCPdocsisBuf[10] = 0X00;
+		DHCPpktcBuf[11] = 0x00;
+		DHCPdocsisBuf[11] = 0X00;
+
+		/*DHCP Bootstrap Layer MAC the last two bytes set to zero*/
+	/*	DHCPdocsisBuf[78] = 0x00;
+		DHCPpktcBuf[78] = 0x00;
+		DHCPdocsisBuf[79] = 0x00;
+		DHCPpktcBuf[79] = 0x00;
+	*/	
+		/*ARP MAC the last two bytes set to zero*/
+		ArpPacket[10] = 0x00;
+		ArpPacket[11] = 0x00;
+		
+		/*ARP Sender MAC the last two bytes set to zero*/
+		ArpPacket[30] = 0x00;
+		ArpPacket[31] = 0x00;
+
+		SendBuf_arp[12] = 0x00;
+		SendBuf_arp[12] = 0x00;
+	}
+
+	//vlan tag
+	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2512 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2512)
+	{
+		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
+		{	
+			/*DHCP VLAN ID Add to next byte for keep plus*/
+			DHCPdocsisBuf[14] += 0x01;
+			DHCPpktcBuf[14] += 0x01;
+
+			DHCPdocsisBuf[15] = 0x00;
+			DHCPpktcBuf[15] = 0x00;
+			
+			/*ARP VLAN ID Add to next byte for keep plus*/
+			ArpPacket[14] += 0x01;
+			ArpPacket[15] += 0x00;
+		}
+		else
+		{
+			/*DHCP VLAN ID Add*/
+			DHCPpktcBuf[15] += 0x01;
+			DHCPdocsisBuf[15] += 0X01;
+			
+			/*ARP VLAN ID Add*/
+			ArpPacket[15] += 0x01;
+		}
+	}
+	else
+	{
+		/*DHCP VLAN ID the last two bytes set to default 2049*/
+		DHCPpktcBuf[14] = 0x08;
+		DHCPdocsisBuf[14] = 0X08;
+		DHCPpktcBuf[15] = 0x01;
+		DHCPdocsisBuf[15] = 0X01;
+		
+		/*ARP VLAN ID the last two bytes set to defalt 2049*/
+		ArpPacket[14] = 0x08;
+		ArpPacket[15] = 0x01;
+	}
+}
 
 //Not in use
 void GetEthMACaddress(char eth_port[])
@@ -1440,20 +1409,3 @@ void GetEthMACaddress(char eth_port[])
 	DHCPpktcBuf_offer[10] = mac[4];
 	DHCPpktcBuf_offer[11] = mac[5];
 }
-
-/*Use to share memory function like malloc*/
-void *xmalloc(size_t size)
-{
-	void *p;
-	p = malloc(size);
-	
-	if( !p )
-	{
-		perror("xmalloc");
-		exit(EXIT_FAILURE);
-	}
-
-	return p;
-}
-
-

@@ -385,7 +385,7 @@ void ThreadSocket()
 			{
 				SocketMenu();
 			}
-			else if(!strcmp(Cmdbuf, "stop\n\0"))
+			/*else if(!strcmp(Cmdbuf, "stop\n\0"))
 			{
 				recvfrom(sockfd, recvbuffer, sizeof(recvbuffer)-1, 0, (struct sockaddr*)&client_addr, &cl_addrlen);
 				if(recvbuffer[0] == 0x53 && recvbuffer[1] == 0x54 && recvbuffer[2] == 0x4F && recvbuffer[3] == 0x50)
@@ -397,7 +397,7 @@ void ThreadSocket()
 				recvbuffer[2] = 0x4F;
 				recvbuffer[3] = 0x50;
 				//sendto(clientfd,recvbuffer,4,0,(struct sockaddr*)&client_addr,&cl_addrlen);
-			}
+			}*/
 			else if(!strcmp(Cmdbuf, "exit\n\0") || !strcmp(Cmdbuf, "EXIT\n\0"))
 			{
 				int i = 0;
