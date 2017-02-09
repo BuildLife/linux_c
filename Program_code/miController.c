@@ -1,62 +1,8 @@
-/*Basic lib*/
-#define _BSD_SOURCE
-#define _USE_BSD 
-#include <stdio.h>
-#include <stdlib.h>
+#include "lib_file.h"
 
-/*use in true & false type : boolean type*/
-#include <stdbool.h>
-
-/*time lib*/
-#include <time.h>
-#include <unistd.h>
-
-/*Serial port connect*/
-#include <fcntl.h>
-#include <termios.h>
-
-/*Variable type*/
-//#include <bsd/string.h>
-#include <string.h>
-#include <sys/types.h>
-#include <stdint.h>
-#include <memory.h>
-
-/*socket include*/
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <pthread.h>
-#include <sys/ioctl.h>
-#include <netdb.h>
-#include <errno.h>
-
-
-#include <pcap.h>
-#include <net/ethernet.h>
-#include <net/if_arp.h>
-#include <net/if.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/udp.h>
-#include <netinet/tcp.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/igmp.h>
-#include <netinet/if_ether.h>
-
-#include <signal.h>
-
-#define BAUDRATE B38400
-#define _POSIX_SOURCE 1 /*Match with POSIX system*/
-
-#define FALSE 0
-#define TRUE 1
 
 char location[] = "/dev/tty";
 char MAPDEVICE[] = "USB0";
-//char *MAPDEVICE = "/dev/ttyUSB0";
 char vlan_mode[32] = {0};
 char MainBuffer[32];
 int Runtimes = 0, Autotest = 0;
