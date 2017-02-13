@@ -298,26 +298,15 @@ void ThreadSocket()
 		FD_ZERO(&rfds);
 		FD_SET(sockfd, &rfds);
 		FD_SET(clientfd, &rfds);
+
 		//wait and accept client to connection
 		printf("Waiting for client to connect........................\n");
 		
-		/*tcp socket*/
-		//clientfd = accept(sockfd,(struct sockaddr*)&client_addr,&cl_addrlen);
 		if(select(sockfd+1, &rfds, NULL, NULL, NULL)) {
 			if(FD_ISSET(sockfd, &rfds)) {
 		/*udp socket*/
 		clientfd = recvfrom(sockfd, recvbuffer, sizeof(recvbuffer)-1, 0, (struct sockaddr*)&client_addr, &cl_addrlen);
-		/*if(clientfd < 0)
-		{
-			printf("Client Connect Fail, Please Check it again.......\n");
-			pthread_cancel(pthreadSocketServerRunning);
-			printf("Leave the Socket Thread Function, Please Re-start the Socket Server.\n");
-		}
-		else
-		{
-			printf("Client Connect Success...........................\n");
-			SetSendClientValue(&buffer[0]);
-		}*/
+		
 		/*ASCII -> C  L  I  E  N  T  O  P  E  N
 				   43 4C 49 45 4E 54 4F 50 45 4E */
 		if(recvbuffer[0] == 0x43 && recvbuffer[1] == 0x4C && recvbuffer[2] == 0x49 && recvbuffer[3] == 0x45 && recvbuffer[4] == 0x4E && recvbuffer[5] == 0x54 && recvbuffer[6] == 0x4F && recvbuffer[7] == 0x50 && recvbuffer[8] == 0x45 && recvbuffer[9] == 0x4E)
@@ -348,13 +337,6 @@ void ThreadSocket()
 				/*Enter in thread USB COMPORT*/
 				printf("Connect Controller and start to set %s mode\n", vlan_mode);
 				ThreadCmcControl();
-				/*pth_usbport = pthread_create(&pthreadComPort, NULL, (void*)ThreadCmcControl, NULL);
-				if(pth_usbport < 0)
-				{
-					printf("Create USB Control server Error\n");
-					exit(1);
-				}*/
-	//			pthread_join(pthreadComPort,NULL);
 
 				sleep(2);
 				buffer[1] = (Runtimes >> 8) & 0xff;
@@ -364,8 +346,6 @@ void ThreadSocket()
 				buffer[5] = 0x01;
 
 				//sending to client message
-				/*tcp socket*/
-				//if(send(clientfd,buffer,sizeof(buffer),0) < 0)
 				
 				/*udp socket*/
 				if(sendto(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr*)&client_addr, cl_addrlen) > 0)
@@ -374,9 +354,6 @@ void ThreadSocket()
 				}
 				else
 					printf("Sending to client failed................\n");
-
-				/*tcp socket*/
-				//if(recv(clientfd, buffer, sizeof(buffer),0) > 0)
 
 				/*udp socket*/
 			//	recvfrom(sockfd,recvbuffer,sizeof(recvbuffer)-1,0,(struct sockaddr*)&client_addr,&cl_addrlen);
@@ -416,9 +393,6 @@ void ThreadSocket()
 				buffer[9] = 0x53;
 				buffer[10] = 0x45;
 				
-				/*tcp socket*/
-				//send(clientfd,buffer,11,0);
-				
 				/*udp socket*/
 				sendto(sockfd, buffer, 11, 0, (struct sockaddr*)&client_addr, cl_addrlen);
 				
@@ -430,8 +404,7 @@ void ThreadSocket()
 				memset(buffer, 0, sizeof(buffer));
 				
 			}
-			//else
-			//	printf("No this optins\n");
+
 		} //while fgets
 		} //if client open command
 		close(clientfd);

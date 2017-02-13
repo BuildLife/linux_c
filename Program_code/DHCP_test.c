@@ -23,8 +23,8 @@ void Signal_Stophandler();
 void ThreadClientSocket();
 void Memu(char *);
 char *mac_ntoa(unsigned char *);
-void SVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *, eth_header *);
-void DVGM_Mode(u_int32_t , const u_int8_t *, eth_header *, eth_header *, eth_header *);
+void SVGM_Mode(u_int32_t , const u_int8_t *);
+void DVGM_Mode(u_int32_t , const u_int8_t *);
 void dump_DHCP_ip(ip_header *, int);
 void dump_ARP_ip(arp_header *, int);
 void pcap_handler_func(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
@@ -34,6 +34,13 @@ void read_loop_lan();
 void Option_Receive(int, char);
 void send_packet();
 void GetEthMACaddress(char []);
+
+
+//Socket Client and Server Command
+//Socket_Cmd socketcmd = {0}; 
+
+//Send buffer
+SendingBuffer SBr = {0};
 
 
 /*Ethernet send port and receive port*/
@@ -79,6 +86,10 @@ void Signal_Stophandler()
 /*Client socket for use*/
 void ThreadClientSocket()
 {	
+
+	//Socket_Cmd->CLIENTOPEN = "CLIENTOPEN";
+	//Socket_Cmd->SERVEROPEN = "SERVEROPEN";
+	//Socket_Cmd->SERVERCLOSE = "CLOSE";
 	int clientfd;
 	struct sockaddr_in client_addr;
 	struct sockaddr_in server_addr;
@@ -90,10 +101,8 @@ void ThreadClientSocket()
 	int GetStartVID = 0;
 	fd_set rfds;
 	int res = 0;
+
 	//create socket
-	/*tcp socket*/
-	//clientfd = socket(AF_INET, SOCK_STREAM, 0);
-	
 	/*udp socket*/
 	clientfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(clientfd < 0)
@@ -109,12 +118,6 @@ void ThreadClientSocket()
 	client_addr.sin_family = AF_INET;
 	client_addr.sin_port = htons(9998);
 	inet_pton(AF_INET, "127.0.0.1", &client_addr.sin_addr.s_addr);
-
-	/*tcp socket */
-	//Connet to server
-	//connect(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
-
-	//bind(clientfd, (struct sockaddr*)&client_addr, sizeof(client_addr));
 
 	bzero(client_buffer, 128);
 	bzero(sendserver_buffer, 128);
@@ -133,6 +136,7 @@ void ThreadClientSocket()
 	if(!strcmp(sendserver_buffer, SERVEROPEN))
 	{
 		printf("Connect to Server\n");
+		
 		//clean sendserver_buffer
 		memset(sendserver_buffer, 0, sizeof(sendserver_buffer));
 	}
@@ -145,12 +149,9 @@ void ThreadClientSocket()
 		FD_SET(clientfd, &rfds);
 		if(select(clientfd+1, &rfds, NULL, NULL, NULL)) {
 			if(FD_ISSET(clientfd, &rfds)) {
-		/*tcp socket*/
-		//res = recv(clientfd, client_buffer, sizeof(client_buffer), 0);
 		/*udp socket*/
 		res = recvfrom(clientfd, client_buffer, sizeof(client_buffer)-1, 0, (struct sockaddr *)&server_addr,&cl_addr);
 		
-
 			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
 			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
 			
@@ -205,7 +206,8 @@ void ThreadClientSocket()
 					client_buffer[9] == 0x53 && 
 					client_buffer[10] == 0x45)
 			{*/
-			else if(strstr(client_buffer, CLIENTCLOSE)){
+			// It was still had problem need to fix.
+			else if(strstr(client_buffer, SERVERCLOSE)){
 					printf("Socket Server close\n")	;	
 					pthread_cancel(pthreadSocketClient);
 			}
@@ -223,8 +225,8 @@ void Menu(char *mode)
 	{
 	    printf(" _______________ USER MENU _______________ \n");
 		printf("|                                         |\n");
-		printf("| 1.SVGM MODE                             |\n");
-		printf("| 2.DVGM MODE                             |\n");
+		printf("| 1.DVGM MODE                             |\n");
+		printf("| 2.SVGM MODE                             |\n");
 		printf("| 3.Exit this Program                     |\n");
 		printf("| 4.Start Socket thread client            |\n");
 		printf("| h.User Menu Show                        |\n");
@@ -267,7 +269,6 @@ void Menu(char *mode)
 			}
 		}
 	}
-	//printf("***************************\n");
 }
 
 //transformation mac address
@@ -280,7 +281,7 @@ char *mac_ntoa(unsigned char *mac_d)
 }
 
 /*DHCP SVGM Mode*/
-void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc, eth_header *LAN_arp)
+void SVGM_Mode(u_int32_t length, const u_int8_t *content)
 {
 	/********************************* For LAN buffer **************************************/
 	//LAN : set & get source mac and destination mac
@@ -296,22 +297,22 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	u_int16_t LAN_arp_TPID;
 
 	//LAN : set mac 
-	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis -> dmac), sizeof(LAN_docsis_dstmac));
-	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis -> smac), sizeof(LAN_docsis_srcmac));
-	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc -> dmac), sizeof(LAN_pktc_dstmac));
-	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc -> smac), sizeof(LAN_pktc_srcmac));
-	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp -> dmac), sizeof(LAN_arp_dstmac));
-	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp -> smac), sizeof(LAN_arp_srcmac));
+	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis_ethhdr -> dmac), sizeof(LAN_docsis_dstmac));
+	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis_ethhdr -> smac), sizeof(LAN_docsis_srcmac));
+	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc_ethhdr -> dmac), sizeof(LAN_pktc_dstmac));
+	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc_ethhdr -> smac), sizeof(LAN_pktc_srcmac));
+	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp_ethhdr -> dmac), sizeof(LAN_arp_dstmac));
+	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp_ethhdr -> smac), sizeof(LAN_arp_srcmac));
 
 	//LAN : Ethernet type
-	LAN_docsis_type = ntohs(LAN_docsis -> type);
-	LAN_pktc_type = ntohs(LAN_pktc -> type);
-	LAN_arp_type = ntohs(LAN_arp -> type);
+	LAN_docsis_type = ntohs(LAN_docsis_ethhdr -> type);
+	LAN_pktc_type = ntohs(LAN_pktc_ethhdr -> type);
+	LAN_arp_type = ntohs(LAN_arp_ethhdr -> type);
 
 	//LAN : TPID
-	LAN_docsis_TPID = ntohs(LAN_docsis -> tpid);
-	LAN_pktc_TPID = ntohs(LAN_pktc -> tpid);
-	LAN_arp_TPID = ntohs(LAN_arp -> tpid);
+	LAN_docsis_TPID = ntohs(LAN_docsis_ethhdr -> tpid);
+	LAN_pktc_TPID = ntohs(LAN_pktc_ethhdr -> tpid);
+	LAN_arp_TPID = ntohs(LAN_arp_ethhdr -> tpid);
 	/****************************************************************************************/
 
 	/********************************* For WAN buffer ***************************************/
@@ -392,7 +393,7 @@ void SVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 
 
 /*DHCP DVGM Mode*/
-void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis, eth_header *LAN_pktc, eth_header *LAN_arp)
+void DVGM_Mode(u_int32_t length, const u_int8_t *content)
 {
 	/********************************* For LAN buffer **************************************/
 	//LAN : set & get source mac and destination mac
@@ -408,22 +409,22 @@ void DVGM_Mode(u_int32_t length, const u_int8_t *content, eth_header *LAN_docsis
 	u_int16_t LAN_arp_TPID;
 
 	//LAN : set mac 
-	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis -> dmac), sizeof(LAN_docsis_dstmac));
-	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis -> smac), sizeof(LAN_docsis_srcmac));
-	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc -> dmac), sizeof(LAN_pktc_dstmac));
-	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc -> smac), sizeof(LAN_pktc_srcmac));
-	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp -> dmac), sizeof(LAN_arp_dstmac));
-	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp -> smac), sizeof(LAN_arp_srcmac));
+	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis_ethhdr -> dmac), sizeof(LAN_docsis_dstmac));
+	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis_ethhdr -> smac), sizeof(LAN_docsis_srcmac));
+	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc_ethhdr -> dmac), sizeof(LAN_pktc_dstmac));
+	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc_ethhdr -> smac), sizeof(LAN_pktc_srcmac));
+	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp_ethhdr -> dmac), sizeof(LAN_arp_dstmac));
+	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp_ethhdr -> smac), sizeof(LAN_arp_srcmac));
 
 	//LAN : Ethernet type
-	LAN_docsis_type = ntohs(LAN_docsis -> type);
-	LAN_pktc_type = ntohs(LAN_pktc -> type);
-	LAN_arp_type = ntohs(LAN_arp -> type);
+	LAN_docsis_type = ntohs(LAN_docsis_ethhdr -> type);
+	LAN_pktc_type = ntohs(LAN_pktc_ethhdr -> type);
+	LAN_arp_type = ntohs(LAN_arp_ethhdr -> type);
 
 	//LAN : TPID
-	LAN_docsis_TPID = ntohs(LAN_docsis -> tpid);
-	LAN_pktc_TPID = ntohs(LAN_pktc -> tpid);
-	LAN_arp_TPID = ntohs(LAN_arp -> tpid);
+	LAN_docsis_TPID = ntohs(LAN_docsis_ethhdr -> tpid);
+	LAN_pktc_TPID = ntohs(LAN_pktc_ethhdr -> tpid);
+	LAN_arp_TPID = ntohs(LAN_arp_ethhdr -> tpid);
 	/****************************************************************************************/
 
 	/********************************* For WAN buffer ***************************************/
@@ -516,13 +517,13 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			//Record receive docsis packet
 			Receivedocsispkt++;
 
-			ReceiveBuf = (char*)ipv4;
+			SBr.ReceiveBuf = (char*)ipv4;
 
 			if(DHCPBufMode == "docsis")
 			{
 				for(i = 0; i < length; i++)
 				{
-					if(SendBuf[i] != ReceiveBuf[i])
+					if(SBr.SendBuf[i] != SBr.ReceiveBuf[i])
 					{
 						compare_num += 1;
 					}
@@ -532,7 +533,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			{
 				for(x = 0; x < length; x++)
 				{
-					if(SendpktcBuf[x] != ReceiveBuf[x])
+					if(SBr.SendpktcBuf[x] != SBr.ReceiveBuf[x])
 					{
 						compare_num += 1;
 					}
@@ -550,7 +551,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			printf("*****************************************************************\n");
 			
 			/*Clear ReceiveBuf to zero*/
-			memset(ReceiveBuf, 0, length);
+			memset(SBr.ReceiveBuf, 0, length);
 			
 			/*for test*/
 			if((!compare_num) == 0)
@@ -562,12 +563,12 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			//Record receive pktc packet
 			Receivepktcpkt++;
 
-			ReceiveBuf_offer = (char*)ipv4;
+			SBr.ReceiveBuf_offer = (char*)ipv4;
 			if(DHCPBufMode == "docsis")
 			{
 				for(i_offer = 0; i_offer < length; i_offer++)
 				{
-					if(SendBuf_offer[i_offer] != ReceiveBuf_offer[i_offer])
+					if(SBr.SendBuf_offer[i_offer] != SBr.ReceiveBuf_offer[i_offer])
 					{
 						compare_offer += 1;
 					}
@@ -577,7 +578,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			{
 				for(x_offer = 0; x_offer < length; x_offer++)
 				{
-					if(SendpktcBuf_offer[x_offer] != ReceiveBuf_offer[x_offer])
+					if(SBr.SendpktcBuf_offer[x_offer] != SBr.ReceiveBuf_offer[x_offer])
 					{
 						compare_offer += 1;
 					}
@@ -595,7 +596,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			printf("*****************************************************************\n");
 			
 			/*Clear ReceiveBuf to zero*/
-			memset(ReceiveBuf_offer, 0, length);
+			memset(SBr.ReceiveBuf_offer, 0, length);
 			/*for test*/
 			/*if((!compare_offer) == 0)
 			{
@@ -626,11 +627,11 @@ void dump_ARP_ip(arp_header *arp_ipv4, int length)
 		//Record Receive packet 
 		Receivearppkt++;
 
-		ReceiveBuf_arp = (char*)arp_ipv4;
+		SBr.ReceiveBuf_arp = (char*)arp_ipv4;
 		
 		for(i = 0; i < length; i++)
 		{
-			if(SendBuf_arp[i] != ReceiveBuf_arp[i])
+			if(SBr.SendBuf_arp[i] != SBr.ReceiveBuf_arp[i])
 				compare_arp += 1;
 		}
 
@@ -644,21 +645,13 @@ void dump_ARP_ip(arp_header *arp_ipv4, int length)
 		else
 			CompareTrueTimes_arp += 1;
 
-	  	memset(ReceiveBuf_arp, 0, length);
+	  	memset(SBr.ReceiveBuf_arp, 0, length);
 	  }
 }
 
 /*WAN Port read Function*/
 void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
 {
-	/*For LAN docsis buffer*/
-	eth_header *LAN_docsis_ethhdr = (eth_header*)DHCPdocsisBuf;
-
-	/*For LAN pktc buffer*/
-	eth_header *LAN_pktc_ethhdr = (eth_header*)DHCPpktcBuf;
-
-	/*For LAN ARP buffer*/
-	eth_header *LAN_arp_ethhdr = (eth_header*)ArpPacket;
 
 	//check buffer length is enough normal ethernet buffer
 	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header))
@@ -687,12 +680,12 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 		if(DVGM_checksum == 0xdead && PacketMode == "DHCP")
 		{
 			printf("Current Send Times : %s", timebuf);
-			DVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
+			DVGM_Mode(header -> caplen, bytes);
 		}
 		else if(PacketMode == "ARP" && !strcmp(send_sender_ip, receive_sender_ip))
 		{
 			printf("Current Send Times : %s", timebuf);
-			DVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
+			DVGM_Mode(header -> caplen, bytes);
 		}
 	}
 	else if(ChangeMode == "SVGM")
@@ -703,12 +696,12 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 		if(SVGM_checksum == 0xdead && PacketMode == "DHCP")
 		{
 			printf("Current Send Times : %s", timebuf);
-			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
+			SVGM_Mode(header -> caplen, bytes);
 		}
 		else if(PacketMode == "ARP" && !strcmp(send_sender_ip, receive_sender_ip))
 		{
 			printf("Current Send Times : %s", timebuf);
-			SVGM_Mode(header -> caplen, bytes, LAN_docsis_ethhdr, LAN_pktc_ethhdr, LAN_arp_ethhdr);
+			SVGM_Mode(header -> caplen, bytes);
 		}
 	}
 }
@@ -718,12 +711,6 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 void pcap_handler_func_lan(unsigned char *user,const struct pcap_pkthdr *header, const unsigned char *bytes)
 {
 	unsigned short checksum_offer = (bytes[24] << 8) | bytes[25];
-	/*For LAN docsis buffer*/
-	eth_header *WAN_docsis_ethhdr_offer = (eth_header*)DHCPdocsisBuf_offer;
-
-	/*For LAN pktc buffer*/
-	eth_header *WAN_pktc_ethhdr_offer = (eth_header*)DHCPpktcBuf_offer;
-
 
 	//check buffer length have enough normal ethernet buffer
 	if( header -> caplen < sizeof(ip_header) + sizeof(struct ether_header))
@@ -971,6 +958,10 @@ void Option_Receive(int D_times, char sop)
 					DHCPBufMode = "docsis";
 
 					pthread_mutex_lock(&pcap_send_mutex);
+					
+					SBr.SendBuf_arp[11] = 0x11;
+					ArpPacket[9] = 0x11;
+					ArpPacket[29] = 0x11;
 
 					if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
@@ -1006,6 +997,11 @@ void Option_Receive(int D_times, char sop)
 					DHCPBufMode = "pktc";
 
 					pthread_mutex_lock(&pcap_send_mutex);
+					
+					SBr.SendBuf_arp[11] = 0x22;
+					ArpPacket[9] = 0x22;
+					ArpPacket[29] = 0x22;
+
 
 					if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
@@ -1216,48 +1212,48 @@ void InsertSendBuffer()
 {
 /*store send DHCP discover buf in char for compare********/
 	int s_dis = 0, eth_ft = 0;
-	SendBuf = xmalloc(sizeof(DHCPdocsisBuf));
-	ReceiveBuf = xmalloc(sizeof(DHCPdocsisBuf));
+	SBr.SendBuf = xmalloc(sizeof(DHCPdocsisBuf));
+	SBr.ReceiveBuf = xmalloc(sizeof(DHCPdocsisBuf));
 
 	for(s_dis = 18; s_dis < sizeof(DHCPdocsisBuf); s_dis++)
 	{
-		SendBuf[eth_ft++] = DHCPdocsisBuf[s_dis];
+		SBr.SendBuf[eth_ft++] = DHCPdocsisBuf[s_dis];
 	}
 
 	int s_pkt = 0, eth_pk = 0;
-	SendpktcBuf = xmalloc(sizeof(DHCPpktcBuf));
+	SBr.SendpktcBuf = xmalloc(sizeof(DHCPpktcBuf));
 	for(s_pkt = 18; s_pkt < sizeof(DHCPpktcBuf); s_pkt++)
 	{
-		SendpktcBuf[eth_pk++] = DHCPpktcBuf[s_pkt];
+		SBr.SendpktcBuf[eth_pk++] = DHCPpktcBuf[s_pkt];
 	}
 	/*************************************************/
 
 	/*store send DHCP offer buf in char for compare********/
 	int s_off = 0, eth_ftoff = 0;
-	SendBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
-	ReceiveBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
+	SBr.SendBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
+	SBr.ReceiveBuf_offer = xmalloc(sizeof(DHCPdocsisBuf_offer));
 
 	for(s_off = 14; s_off < sizeof(DHCPdocsisBuf_offer); s_off++)
 	{
-		SendBuf_offer[eth_ftoff++] = DHCPdocsisBuf_offer[s_off];
+		SBr.SendBuf_offer[eth_ftoff++] = DHCPdocsisBuf_offer[s_off];
 	}
 
 	int s_poff = 0, eth_pkoff = 0;
-	SendpktcBuf_offer = xmalloc(sizeof(DHCPpktcBuf_offer));
+	SBr.SendpktcBuf_offer = xmalloc(sizeof(DHCPpktcBuf_offer));
 	for(s_poff = 14; s_poff < sizeof(DHCPpktcBuf_offer); s_poff++)
 	{
-		SendpktcBuf_offer[eth_pkoff++] = DHCPpktcBuf_offer[s_poff];
+		SBr.SendpktcBuf_offer[eth_pkoff++] = DHCPpktcBuf_offer[s_poff];
 	}
 	/*************************************************/
 
 	/*Strore send ARP buf in char for compare*********/
 	int s_arp = 0, eth_arp = 0;
-	SendBuf_arp = xmalloc(sizeof(ArpPacket));
-	ReceiveBuf_arp = xmalloc(sizeof(ArpPacket));
+	SBr.SendBuf_arp = xmalloc(sizeof(ArpPacket));
+	SBr.ReceiveBuf_arp = xmalloc(sizeof(ArpPacket));
 
 	for(s_arp = 18; s_arp < sizeof(ArpPacket); s_arp++)
 	{
-		SendBuf_arp[eth_arp++] = ArpPacket[s_arp];
+		SBr.SendBuf_arp[eth_arp++] = ArpPacket[s_arp];
 	}
 	/*************************************************/
 }
@@ -1291,8 +1287,8 @@ void MACandVIDplus()
 			ArpPacket[30] += 0x01;
 			ArpPacket[31] = 0x00;
 
-			SendBuf_arp[12] += 0x01;
-			SendBuf_arp[13] = 0x00;
+			SBr.SendBuf_arp[12] += 0x01;
+			SBr.SendBuf_arp[13] = 0x00;
 
 		}
 		else
@@ -1309,7 +1305,7 @@ void MACandVIDplus()
 			ArpPacket[11] += 0x01;
 			/*ARP Sender MAC Add*/
 			ArpPacket[31] += 0x01;
-			SendBuf_arp[13] += 0x01;
+			SBr.SendBuf_arp[13] += 0x01;
 		}
 	}
 	else
@@ -1334,12 +1330,13 @@ void MACandVIDplus()
 		ArpPacket[30] = 0x00;
 		ArpPacket[31] = 0x00;
 
-		SendBuf_arp[12] = 0x00;
-		SendBuf_arp[12] = 0x00;
+		SBr.SendBuf_arp[12] = 0x00;
+		SBr.SendBuf_arp[12] = 0x00;
 	}
 
 	//vlan tag
-	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2512 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2512)
+	//if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 2512 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 2512)
+	if(((DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff) < 4095 || ((DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktcBuf[15] & 0xff) < 4095)
 	{
 		if((DHCPpktcBuf[15] & 0xff) == 255 || (DHCPdocsisBuf[15] & 0xff) == 255)
 		{	
