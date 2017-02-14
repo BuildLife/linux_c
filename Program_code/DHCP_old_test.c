@@ -23,6 +23,10 @@ void Signal_Stophandler();
 void ThreadClientSocket();
 void Memu(char *);
 char *mac_ntoa(unsigned char *);
+#if 0
+void SVGM_Mode(u_int32_t , const u_int8_t *);
+void DVGM_Mode(u_int32_t , const u_int8_t *);
+#endif
 void VGM_MODE(u_int32_t , const u_int8_t *);
 void dump_DHCP_ip(ip_header *, int);
 void dump_ARP_ip(arp_header *, int);
@@ -278,6 +282,228 @@ char *mac_ntoa(unsigned char *mac_d)
 
 	return MACSTR;
 }
+#if 0
+/*DHCP SVGM Mode*/
+void SVGM_Mode(u_int32_t length, const u_int8_t *content)
+{
+	/********************************* For LAN buffer **************************************/
+	//LAN : set & get source mac and destination mac
+	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_pktc_dstmac[MAC_ADDRSTRLEN] = {}, LAN_pktc_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_arp_dstmac[MAC_ADDRSTRLEN] = {}, LAN_arp_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t LAN_docsis_type;
+	u_int16_t LAN_docsis_TPID;
+	u_int16_t LAN_pktc_type;
+	u_int16_t LAN_pktc_TPID;
+	u_int16_t LAN_arp_type;
+	u_int16_t LAN_arp_TPID;
+
+	//LAN : set mac 
+	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis_ethhdr -> dmac), sizeof(LAN_docsis_dstmac));
+	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis_ethhdr -> smac), sizeof(LAN_docsis_srcmac));
+	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc_ethhdr -> dmac), sizeof(LAN_pktc_dstmac));
+	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc_ethhdr -> smac), sizeof(LAN_pktc_srcmac));
+	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp_ethhdr -> dmac), sizeof(LAN_arp_dstmac));
+	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp_ethhdr -> smac), sizeof(LAN_arp_srcmac));
+
+	//LAN : Ethernet type
+	LAN_docsis_type = ntohs(LAN_docsis_ethhdr -> type);
+	LAN_pktc_type = ntohs(LAN_pktc_ethhdr -> type);
+	LAN_arp_type = ntohs(LAN_arp_ethhdr -> type);
+
+	//LAN : TPID
+	LAN_docsis_TPID = ntohs(LAN_docsis_ethhdr -> tpid);
+	LAN_pktc_TPID = ntohs(LAN_pktc_ethhdr -> tpid);
+	LAN_arp_TPID = ntohs(LAN_arp_ethhdr -> tpid);
+	/****************************************************************************************/
+
+	/********************************* For WAN buffer ***************************************/
+	eth_header *WAN_ethhdr = (eth_header*)content;
+
+	//WAN : set & get source mac and destination mac
+	char WAN_dstmac[MAC_ADDRSTRLEN] = {}, WAN_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t WAN_type;
+	u_int16_t WAN_TPID;
+
+	//WAN : set mac 
+	strlcpy(WAN_dstmac, mac_ntoa(WAN_ethhdr -> dmac), sizeof(WAN_dstmac));
+	strlcpy(WAN_srcmac, mac_ntoa(WAN_ethhdr -> smac), sizeof(WAN_srcmac));
+	//WAN : Ethernet type
+	WAN_type = ntohs(WAN_ethhdr -> type);
+
+	//WAN : TPID
+	WAN_TPID = ntohs(WAN_ethhdr -> tpid);
+	/****************************************************************************************/
+	
+
+		printf("------------------------------- SVGM Mode ---------------------------------------\n");
+		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
+		printf("---------------- %s ---------------- | --------------- %s --------------\n",LAN_port,WAN_port);
+	
+	if(PacketMode == "DHCP") {
+	  if(DHCPBufMode == "docsis")
+	  {
+		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s        |   %17s\n",LAN_docsis_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n", LAN_docsis_type, WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",DHCPdocsisBuf[302],DHCPdocsisBuf[303],DHCPdocsisBuf[304],DHCPdocsisBuf[305],DHCPdocsisBuf[306],DHCPdocsisBuf[307],DHCPdocsisBuf[308],DHCPdocsisBuf[309],DHCPdocsisBuf[310]);
+		
+		printf("                |   %c%c%c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308],content[309],content[310]);
+
+		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_docsis_TPID,WAN_TPID);
+	  }
+	  else if(DHCPBufMode == "pktc")
+	  {
+		printf("Destination 	: %17s        |   %17s\n",LAN_pktc_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s        |   %17s\n",LAN_pktc_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",LAN_pktc_type,WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c",DHCPpktcBuf[302],DHCPpktcBuf[303],DHCPpktcBuf[304],DHCPpktcBuf[305],DHCPpktcBuf[306],DHCPpktcBuf[307],DHCPpktcBuf[308]);
+		
+
+		printf("                  |   %c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308]);
+
+		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_pktc_TPID,WAN_TPID);
+		
+	  }
+		/*Send buffer to ip structure*/
+		dump_DHCP_ip((ip_header*)(content + sizeof(eth_header)),length - sizeof(eth_header));
+	  }// if PacketMode == DHCP
+	else if(PacketMode == "ARP")
+	{
+		printf("------------------------------- ARP Packet ---------------------------------------\n");
+		printf("Destination 	: %17s        |   %17s\n",LAN_arp_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s        |   %17s\n",LAN_arp_srcmac, WAN_srcmac);
+		
+		printf("Sender IP      	: %u.%u.%u.%u           |   %u.%u.%u.%u\n",ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, content[32]&0xff, content[33]&0xff, content[34]&0xff, content[35]&0xff);
+		
+		printf("Tender IP      	: %u.%u.%u.%u             |   %u.%u.%u.%u\n",ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, content[42]&0xff, content[43]&0xff, content[44]&0xff, content[45]&0xff);
+		
+		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID,WAN_TPID);
+		
+		dump_ARP_ip((arp_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
+
+	}//if PacketMode == ARP
+}
+
+
+/*DHCP DVGM Mode*/
+void DVGM_Mode(u_int32_t length, const u_int8_t *content)
+{
+	/********************************* For LAN buffer **************************************/
+	//LAN : set & get source mac and destination mac
+	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_pktc_dstmac[MAC_ADDRSTRLEN] = {}, LAN_pktc_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_arp_dstmac[MAC_ADDRSTRLEN] = {}, LAN_arp_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t LAN_docsis_type;
+	u_int16_t LAN_docsis_TPID;
+	u_int16_t LAN_pktc_type;
+	u_int16_t LAN_pktc_TPID;
+	u_int16_t LAN_arp_type;
+	u_int16_t LAN_arp_TPID;
+
+	//LAN : set mac 
+	strlcpy(LAN_docsis_dstmac, mac_ntoa(LAN_docsis_ethhdr -> dmac), sizeof(LAN_docsis_dstmac));
+	strlcpy(LAN_docsis_srcmac, mac_ntoa(LAN_docsis_ethhdr -> smac), sizeof(LAN_docsis_srcmac));
+	strlcpy(LAN_pktc_dstmac, mac_ntoa(LAN_pktc_ethhdr -> dmac), sizeof(LAN_pktc_dstmac));
+	strlcpy(LAN_pktc_srcmac, mac_ntoa(LAN_pktc_ethhdr -> smac), sizeof(LAN_pktc_srcmac));
+	strlcpy(LAN_arp_dstmac, mac_ntoa(LAN_arp_ethhdr -> dmac), sizeof(LAN_arp_dstmac));
+	strlcpy(LAN_arp_srcmac, mac_ntoa(LAN_arp_ethhdr -> smac), sizeof(LAN_arp_srcmac));
+
+	//LAN : Ethernet type
+	LAN_docsis_type = ntohs(LAN_docsis_ethhdr -> type);
+	LAN_pktc_type = ntohs(LAN_pktc_ethhdr -> type);
+	LAN_arp_type = ntohs(LAN_arp_ethhdr -> type);
+
+	//LAN : TPID
+	LAN_docsis_TPID = ntohs(LAN_docsis_ethhdr -> tpid);
+	LAN_pktc_TPID = ntohs(LAN_pktc_ethhdr -> tpid);
+	LAN_arp_TPID = ntohs(LAN_arp_ethhdr -> tpid);
+	/****************************************************************************************/
+
+	/********************************* For WAN buffer ***************************************/
+	eth_header *WAN_ethhdr = (eth_header*)content;
+
+	//WAN : set & get source mac and destination mac
+	char WAN_dstmac[MAC_ADDRSTRLEN] = {}, WAN_srcmac[MAC_ADDRSTRLEN] = {};
+
+	u_int16_t WAN_type;
+	u_int16_t WAN_TPID;
+
+	//WAN : set mac 
+	strlcpy(WAN_dstmac, mac_ntoa(WAN_ethhdr -> dmac), sizeof(WAN_dstmac));
+	strlcpy(WAN_srcmac, mac_ntoa(WAN_ethhdr -> smac), sizeof(WAN_srcmac));
+	//WAN : Ethernet type
+	WAN_type = ntohs(WAN_ethhdr -> type);
+
+	/****************************************************************************************/
+	
+		printf("------------------------------- DVGM Mode ---------------------------------------\n");
+		printf("---------------- LAN Port ================ | ============> WAN Port -------------\n");
+		printf("---------------- %s ---------------- | ------------ %s ------------\n",LAN_port,WAN_port);
+	
+	if(PacketMode == "DHCP") {
+	  if(DHCPBufMode == "docsis")
+	  {
+		printf("Destination 	: %17s        |   %17s\n",LAN_docsis_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s        |   %17s\n",LAN_docsis_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",LAN_docsis_type,WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c%c%c",DHCPdocsisBuf[302],DHCPdocsisBuf[303],DHCPdocsisBuf[304],DHCPdocsisBuf[305],DHCPdocsisBuf[306],DHCPdocsisBuf[307],DHCPdocsisBuf[308],DHCPdocsisBuf[309],DHCPdocsisBuf[310]);
+		
+		printf("                |   %c%c%c%c%c%c%c%c%c\n",content[298],content[299],content[300],content[301],content[302],content[303],content[304],content[305],content[306]);
+
+		printf("802.1Q Virtual LAN ID : %u\n",LAN_docsis_TPID);
+	  }
+	  else if(DHCPBufMode == "pktc")
+	  {
+	
+		printf("Destination 	: %17s        |   %17s\n",LAN_pktc_dstmac, WAN_dstmac);
+	
+		printf("Source      	: %17s        |   %17s\n",LAN_pktc_srcmac, WAN_srcmac);
+	
+		printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",LAN_pktc_type,WAN_type);
+		
+		printf("Option 60 class : %c%c%c%c%c%c%c",DHCPpktcBuf[302],DHCPpktcBuf[303],DHCPpktcBuf[304],DHCPpktcBuf[305],DHCPpktcBuf[306],DHCPpktcBuf[307],DHCPpktcBuf[308]);
+		
+
+		printf("                  |   %c%c%c%c%c%c%c\n", content[298], content[299], content[300], content[301], content[302], content[303], content[304]);
+
+		printf("802.1Q Virtual LAN ID : %u\n", LAN_pktc_TPID);
+	  }  
+	  /*Send buffer to ip structure*/
+	  dump_DHCP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+	}// if PacketMode == DHCP
+	else if(PacketMode == "ARP")
+	{
+		printf("------------------------------- ARP Packet ---------------------------------------\n");
+		
+		printf("Destination 	: %17s        |   %17s\n",LAN_arp_dstmac, WAN_dstmac);
+		
+		printf("Source      	: %17s        |   %17s\n",LAN_arp_srcmac, WAN_srcmac);
+		
+		printf("Sender IP      	: %d.%d.%d.%d            |   %d.%d.%d.%d\n",ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, content[28]%0xff, content[29]%0xff, content[30]%0xff, content[31]%0xff);
+		
+		printf("Tender IP      	: %d.%d.%d.%d            |   %d.%d.%d.%d\n",ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, content[38]&0xff, content[39]&0xff, content[40]&0xff, content[41]&0xff);
+		
+		
+		printf("802.1Q Virtual LAN ID : %u\n", LAN_arp_TPID);
+		
+		dump_ARP_ip((arp_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+	}
+}
+#endif
 
 //Combinded SVGM and DVGM in this Function
 void VGM_MODE(u_int32_t length, const u_int8_t *content)
@@ -678,6 +904,57 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 			VGM_MODE(header -> caplen, bytes);
 		}
 	}
+#if 0
+	/*Send buffer to ip structure*/
+	if(ChangeMode == "DVGM")
+	{
+		unsigned short DVGM_checksum = (bytes[18] << 8) | bytes[19];
+		sprintf(receive_sender_ip, "%d.%d.%d.%d", bytes[28]&0xff, bytes[29]&0xff, bytes[30]&0xff, bytes[31]&0xff);
+		
+		if(DVGM_checksum == 0xdead && PacketMode == "DHCP")
+		{
+			printf("Current Send Times : %s", timebuf);
+			DVGM_Mode(header -> caplen, bytes);
+		}
+		else if(PacketMode == "ARP" && !strcmp(send_sender_ip, receive_sender_ip))
+		{
+			printf("Current Send Times : %s", timebuf);
+			DVGM_Mode(header -> caplen, bytes);
+		}
+		else if(PacketMode == "TFTP")
+		{
+			if(DVGM_checksum == 0x0006 || DVGM_checksum == 0x0017)
+			{
+				printf("Current Send Times : %s", timebuf);
+				DVGM_Mode(header -> caplen, bytes);
+			}
+		}
+	}
+	else if(ChangeMode == "SVGM")
+	{
+		unsigned short SVGM_checksum = (bytes[22] << 8) | bytes[23];
+		sprintf(receive_sender_ip, "%d.%d.%d.%d", bytes[32]&0xff, bytes[33]&0xff, bytes[34]&0xff, bytes[35]&0xff);
+		
+		if(SVGM_checksum == 0xdead && PacketMode == "DHCP")
+		{
+			printf("Current Send Times : %s", timebuf);
+			SVGM_Mode(header -> caplen, bytes);
+		}
+		else if(PacketMode == "ARP" && !strcmp(send_sender_ip, receive_sender_ip))
+		{
+			printf("Current Send Times : %s", timebuf);
+			SVGM_Mode(header -> caplen, bytes);
+		}
+		else if(PacketMode == "TFTP")
+		{
+			if(SVGM_checksum == 0x0006 || SVGM_checksum == 0x0017)
+			{
+				printf("Current Send Times : %s", timebuf);
+				DVGM_Mode(header -> caplen, bytes);
+			}
+		}
+	}
+	#endif
 }
 
 
