@@ -60,12 +60,13 @@ unsigned int Running_Times = 0, KeepRunning = 0;
 unsigned int CompareFalseTimes = 0, CompareTrueTimes = 0;
 unsigned int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 unsigned int CompareFalseTimes_arp = 0, CompareTrueTimes_arp = 0;
+unsigned int CompareFalseTimes_tftp = 0, CompareTrueTimes_tftp = 0;
 
 /*Socket Server for Auto testing flag 1 : open auto ; 0 : close auto*/
 int AutoTesting = 0;
 
 /*Record Lose packet*/
-int Receivedocsispkt = 0, Receivepktcpkt = 0, Receivearppkt = 0;;
+int Receivedocsispkt = 0, Receivepktcpkt = 0, Receivearppkt = 0, Receivetftppkt = 0;
 
 /*Pthread lock*/
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -265,6 +266,14 @@ void Menu(char *mode)
 				/*Set ARP VLAN ID*/
 				ArpPacket[14] = (Start_VID >> 8) & 0xff;
 				ArpPacket[15] = (Start_VID) & 0xff;
+			
+				/*Set TFTP VLAN ID*/
+				tftpPacket_docsis[14] = (Start_VID >> 8) & 0xff;
+				tftpPacket_docsis[15] = (Start_VID) & 0xff;
+
+				tftpPacket_emta[14] = (Start_VID >> 8) & 0xff;
+				tftpPacket_emta[15] = (Start_VID) & 0xff;
+			
 			}
 		}
 	}
@@ -323,18 +332,22 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	LAN_arp_TPID = ntohs(LAN_arp_ethhdr -> tpid);
 
 	//tftp buffer
-	/*char LAN_tftp_dstmac[MAC_ADDRSTRLEN] = {}, LAN_tftp_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_tftpdocsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_tftpdocsis_srcmac[MAC_ADDRSTRLEN] = {};
+	char LAN_tftpemta_dstmac[MAC_ADDRSTRLEN] = {}, LAN_tftpemta_srcmac[MAC_ADDRSTRLEN] = {};
 
 	u_int16_t LAN_tftp_type;
 	u_int16_t LAN_tftp_TPID;
 	
-	strlcpy(LAN_tftp_dstmac, mac_ntoa(LAN_tftp_ethhdr -> dmac), sizeof(LAN_tftp_dstmac));
-	strlcpy(LAN_tftp_srcmac, mac_ntoa(LAN_tftp_ethhdr -> smac), sizeof(LAN_tftp_srcmac));
+	strlcpy(LAN_tftpdocsis_dstmac, mac_ntoa(LAN_tftpdocsis_ethhdr -> dmac), sizeof(LAN_tftpdocsis_dstmac));
+	strlcpy(LAN_tftpdocsis_srcmac, mac_ntoa(LAN_tftpdocsis_ethhdr -> smac), sizeof(LAN_tftpdocsis_srcmac));
+	
+	strlcpy(LAN_tftpemta_dstmac, mac_ntoa(LAN_tftpemta_ethhdr -> dmac), sizeof(LAN_tftpemta_dstmac));
+	strlcpy(LAN_tftpemta_srcmac, mac_ntoa(LAN_tftpemta_ethhdr -> smac), sizeof(LAN_tftpemta_srcmac));
 
-	LAN_tftp_type = ntohs(LAN_tftp_ethhdr -> type);
+	LAN_tftp_type = ntohs(LAN_tftpdocsis_ethhdr -> type);
 
-	LAN_tftp_TPID = ntohs(LAN_tftp_ethhdr -> tpid);
-*/
+	LAN_tftp_TPID = ntohs(LAN_tftpdocsis_ethhdr -> tpid);
+
 	/****************************************************************************************/
 
 	/********************************* For WAN buffer ***************************************/
@@ -372,19 +385,31 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		
 	  	if(ChangeMode == "DVGM")
 		{
-			printf("Option 60 class : %c%c%c%c%c%c%c%c%c",DHCPdocsisBuf[302],DHCPdocsisBuf[303],DHCPdocsisBuf[304],DHCPdocsisBuf[305],DHCPdocsisBuf[306],DHCPdocsisBuf[307],DHCPdocsisBuf[308],DHCPdocsisBuf[309],DHCPdocsisBuf[310]);
+			printf("Option 60 class : %c%c%c%c%c%c%c%c%c                |   %c%c%c%c%c%c%c%c%c\n",
+							DHCPdocsisBuf[302], DHCPdocsisBuf[303],
+							DHCPdocsisBuf[304], DHCPdocsisBuf[305],
+							DHCPdocsisBuf[306], DHCPdocsisBuf[307],
+							DHCPdocsisBuf[308], DHCPdocsisBuf[309],
+							DHCPdocsisBuf[310],
+							content[298], content[299], content[300],
+							content[301], content[302], content[303],
+							content[304], content[305], content[306]);
 		
-			printf("                |   %c%c%c%c%c%c%c%c%c\n",content[298],content[299],content[300],content[301],content[302],content[303],content[304],content[305],content[306]);
-
 			printf("802.1Q Virtual LAN ID : %u\n",LAN_docsis_TPID);
 
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
 		}
 		else if(ChangeMode == "SVGM")
 		{
-			printf("Option 60 class : %c%c%c%c%c%c%c%c%c",DHCPdocsisBuf[302],DHCPdocsisBuf[303],DHCPdocsisBuf[304],DHCPdocsisBuf[305],DHCPdocsisBuf[306],DHCPdocsisBuf[307],DHCPdocsisBuf[308],DHCPdocsisBuf[309],DHCPdocsisBuf[310]);
-		
-			printf("                |   %c%c%c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308],content[309],content[310]);
+			printf("Option 60 class : %c%c%c%c%c%c%c%c%c                |   %c%c%c%c%c%c%c%c%c\n",
+							DHCPdocsisBuf[302], DHCPdocsisBuf[303],
+							DHCPdocsisBuf[304], DHCPdocsisBuf[305],
+							DHCPdocsisBuf[306], DHCPdocsisBuf[307],
+							DHCPdocsisBuf[308], DHCPdocsisBuf[309],
+							DHCPdocsisBuf[310],
+							content[302], content[303], content[304],
+							content[305], content[306], content[307],
+							content[308], content[309], content[310]);
 
 			printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_docsis_TPID,WAN_TPID);
 			
@@ -402,10 +427,13 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		
 	  	if(ChangeMode == "DVGM")
 		{
-			printf("Option 60 class : %c%c%c%c%c%c%c",DHCPpktcBuf[302],DHCPpktcBuf[303],DHCPpktcBuf[304],DHCPpktcBuf[305],DHCPpktcBuf[306],DHCPpktcBuf[307],DHCPpktcBuf[308]);
-		
-
-			printf("                  |   %c%c%c%c%c%c%c\n", content[298], content[299], content[300], content[301], content[302], content[303], content[304]);
+			printf("Option 60 class : %c%c%c%c%c%c%c                  |   %c%c%c%c%c%c%c\n",
+							DHCPpktcBuf[302], DHCPpktcBuf[303],
+							DHCPpktcBuf[304], DHCPpktcBuf[305],
+							DHCPpktcBuf[306], DHCPpktcBuf[307],
+							DHCPpktcBuf[308],
+							content[298], content[299], content[300],
+							content[301], content[302], content[303], content[304]);
 		
 			printf("802.1Q Virtual LAN ID : %u\n", LAN_pktc_TPID);
 	  	
@@ -413,16 +441,20 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		}
 		else if(ChangeMode == "SVGM")
 		{
-			printf("Option 60 class : %c%c%c%c%c%c%c",DHCPpktcBuf[302],DHCPpktcBuf[303],DHCPpktcBuf[304],DHCPpktcBuf[305],DHCPpktcBuf[306],DHCPpktcBuf[307],DHCPpktcBuf[308]);
+			printf("Option 60 class : %c%c%c%c%c%c%c                  |   %c%c%c%c%c%c%c\n",
+							DHCPpktcBuf[302], DHCPpktcBuf[303],
+							DHCPpktcBuf[304], DHCPpktcBuf[305],
+							DHCPpktcBuf[306], DHCPpktcBuf[307],
+							DHCPpktcBuf[308],
+							content[302], content[303], content[304],
+							content[305], content[306], content[307], content[308]);
 		
-			printf("                  |   %c%c%c%c%c%c%c\n",content[302],content[303],content[304],content[305],content[306],content[307],content[308]);
-
 			printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_pktc_TPID,WAN_TPID);
 	  	
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
 		}
-	  } //DHCPBufMode == "pktc" 
-	}//PacketMode == "DHCP"
+	  } //if DHCPBufMode == "pktc" 
+	}//if PacketMode == "DHCP"
 	else if(PacketMode == "ARP")
 	{
 		printf("------------------------------- ARP Packet ---------------------------------------\n");
@@ -433,9 +465,17 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  
 	  if(ChangeMode == "DVGM")
 	  {
-		printf("Sender IP      	: %d.%d.%d.%d            |   %d.%d.%d.%d\n",ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, content[28]%0xff, content[29]%0xff, content[30]%0xff, content[31]%0xff);
+		printf("Sender IP      	: %d.%d.%d.%d           |   %d.%d.%d.%d\n",
+							ArpPacket[32]&0xff, ArpPacket[33]&0xff, 
+							ArpPacket[34]&0xff, ArpPacket[35]&0xff, 
+							content[28]%0xff, content[29]%0xff, 
+							content[30]%0xff, content[31]%0xff);
 		
-		printf("Tender IP      	: %d.%d.%d.%d            |   %d.%d.%d.%d\n",ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, content[38]&0xff, content[39]&0xff, content[40]&0xff, content[41]&0xff);
+		printf("Tender IP      	: %d.%d.%d.%d             |   %d.%d.%d.%d\n",
+							ArpPacket[42]&0xff, ArpPacket[43]&0xff, 
+							ArpPacket[44]&0xff, ArpPacket[45]&0xff, 
+							content[38]&0xff, content[39]&0xff, 
+							content[40]&0xff, content[41]&0xff);
 		
 		printf("802.1Q Virtual LAN ID : %u\n", LAN_arp_TPID);
 		
@@ -443,30 +483,103 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  }
 	  else if(ChangeMode == "SVGM")
 	  {
-		printf("Sender IP      	: %u.%u.%u.%u           |   %u.%u.%u.%u\n",ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, content[32]&0xff, content[33]&0xff, content[34]&0xff, content[35]&0xff);
+		printf("Sender IP      	: %u.%u.%u.%u           |   %u.%u.%u.%u\n",
+							ArpPacket[32]&0xff, ArpPacket[33]&0xff, 
+							ArpPacket[34]&0xff, ArpPacket[35]&0xff, 
+							content[32]&0xff, content[33]&0xff, 
+							content[34]&0xff, content[35]&0xff);
 		
-		printf("Tender IP      	: %u.%u.%u.%u             |   %u.%u.%u.%u\n",ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, content[42]&0xff, content[43]&0xff, content[44]&0xff, content[45]&0xff);
+		printf("Tender IP      	: %u.%u.%u.%u             |   %u.%u.%u.%u\n",
+							ArpPacket[42]&0xff, ArpPacket[43]&0xff, 
+							ArpPacket[44]&0xff, ArpPacket[45]&0xff, 
+							content[42]&0xff, content[43]&0xff, 
+							content[44]&0xff, content[45]&0xff);
 		
-		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID,WAN_TPID);
+		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID, WAN_TPID);
 		
 		dump_ARP_ip((arp_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
 	  }
-	}//PacketMode == "ARP"
-	/*else if(PacketMode == "TFTP")
+	}//if PacketMode == "ARP"
+	else if(PacketMode == "TFTP")
 	{
+	  	printf("------------------------------- TFTP Packet ---------------------------------------\n");
+		//printf("Ethernet Type 	: 0x%04x                   |   0x%04x\n",LAN_tftp_type, WAN_type);
+	  	if(ChangeMode == "DVGM")
+	  	{
+			if(content[19] == 0x06){
+			printf("Destination 	: %17s        |   %17s\n",LAN_tftpdocsis_dstmac, WAN_dstmac);
 		
-	  if(ChangeMode == "DVGM")
-	  {
+			printf("Source      	: %17s        |   %17s\n",LAN_tftpdocsis_srcmac, WAN_srcmac);
+			printf("Ask Files Name  : %c%c%c%c%c%c%c%c		   |   %c%c%c%c%c%c%c\n", 
+								tftpPacket_docsis[48], tftpPacket_docsis[49],
+								tftpPacket_docsis[50], tftpPacket_docsis[51], 
+								tftpPacket_docsis[52], tftpPacket_docsis[53],
+								tftpPacket_docsis[54], tftpPacket_docsis[55], 
+								content[44], content[45], content[46], content[47], 
+								content[48], content[49], content[50], content[51]);
+			}
+			else if(content[19] == 0x17) {
+			printf("Destination 	: %17s        |   %17s\n",LAN_tftpemta_dstmac, WAN_dstmac);
+		
+			printf("Source      	: %17s        |   %17s\n",LAN_tftpemta_srcmac, WAN_srcmac);
+		
+			printf("Ask Files Name  : %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c	   |	  %c%c%c%c%c%c%c%c%c%c%c%c%c%c\n", 
+								tftpPacket_emta[48], tftpPacket_emta[49],
+								tftpPacket_emta[50], tftpPacket_emta[51], 
+								tftpPacket_emta[52], tftpPacket_emta[53],
+								tftpPacket_emta[54], tftpPacket_emta[55], 
+								tftpPacket_emta[56], tftpPacket_emta[57], 
+								tftpPacket_emta[58], tftpPacket_emta[59], 
+								tftpPacket_emta[60], tftpPacket_emta[61], 
+								tftpPacket_emta[62], 
+								content[44], content[45], content[46], content[47], 
+								content[48], content[49], content[50], content[51],
+								content[52], content[53], content[54], content[55],
+								content[56], content[57], content[58]);
+			}
+			printf("802.1Q Virtual LAN ID : %u\n",LAN_tftp_TPID);
 	  
-	  
-	  }
-	  else if(ChangeMode == "SVGM")
-	  {
-	  
-	  
-	  }
-	}//PacketMode == "TFTP"*/
-
+			dump_TFTP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+	  	}
+	  	else if(ChangeMode == "SVGM")
+	  	{
+			if(content[23] == 0x06){
+			printf("Destination 	: %17s        |   %17s\n",LAN_tftpdocsis_dstmac, WAN_dstmac);
+		
+			printf("Source      	: %17s        |   %17s\n",LAN_tftpdocsis_srcmac, WAN_srcmac);
+		
+			printf("Ask Files Name  : %c%c%c%c%c%c%c%c		   |   %c%c%c%c%c%c%c\n", 
+								tftpPacket_docsis[48], tftpPacket_docsis[49],
+								tftpPacket_docsis[50], tftpPacket_docsis[51], 
+								tftpPacket_docsis[52], tftpPacket_docsis[53],
+								tftpPacket_docsis[54], tftpPacket_docsis[55], 
+								content[48], content[49], content[50], content[51], 
+								content[52], content[53], content[54], content[55]);
+			}
+			else if(content[23] == 0x17) {
+			printf("Destination 	: %17s        |   %17s\n",LAN_tftpemta_dstmac, WAN_dstmac);
+		
+			printf("Source      	: %17s        |   %17s\n",LAN_tftpemta_srcmac, WAN_srcmac);
+		
+			printf("Ask Files Name  : %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c	   |   %c%c%c%c%c%c%c%c%c%c%c%c%c%c\n", 
+								tftpPacket_emta[48], tftpPacket_emta[49],
+								tftpPacket_emta[50], tftpPacket_emta[51], 
+								tftpPacket_emta[52], tftpPacket_emta[53],
+								tftpPacket_emta[54], tftpPacket_emta[55], 
+								tftpPacket_emta[56], tftpPacket_emta[57], 
+								tftpPacket_emta[58], tftpPacket_emta[59], 
+								tftpPacket_emta[60], tftpPacket_emta[61], 
+								tftpPacket_emta[62], 
+								content[48], content[49], content[50], content[51], 
+								content[52], content[53], content[54], content[55],
+								content[56], content[57], content[58], content[59],
+								content[60], content[61], content[62]);
+			}
+			printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_tftp_TPID,WAN_TPID);
+	  		
+			dump_TFTP_ip((ip_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
+	  	}
+	}//PacketMode == "TFTP"
 }
 
 void dump_DHCP_ip(ip_header *ipv4, int length)
@@ -484,6 +597,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			//Record receive docsis packet
 			Receivedocsispkt++;
 
+	
 			SBr.ReceiveBuf = (char*)ipv4;
 
 			if(DHCPBufMode == "docsis")
@@ -616,9 +730,62 @@ void dump_ARP_ip(arp_header *arp_ipv4, int length)
 	  }
 }
 
-void dump_TFTP_ip(ip_header *ipv4, int length)
+void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 {
+	int compare_tftpdocsis = 0, compare_tftpemta = 0;
+	int i_tftp = 0, j_tftp = 0;
 
+	if(htons(tftp_ipv4 -> ip_id) == 0x0006)
+	{
+		Receivetftppkt++;
+
+		SBr.ReceiveBuf_tftp = (char*)tftp_ipv4;
+		
+		for(i_tftp = 0; i_tftp < length; i_tftp++)
+		{
+			if(SBr.ReceiveBuf_tftp[i_tftp] != SBr.SendBuf_tftpdocsis[i_tftp])
+				compare_tftpdocsis += 1;
+		}
+
+		printf("\n");
+		printf("***************** TFTP Compare Data **********************************\n");
+		printf(" 'TFTP DOCSIS' Compare data --------> %s\n", !compare_tftpdocsis ? "true" : "false");
+		printf("*****************************************************************\n");
+		
+		
+		if(compare_tftpdocsis > 0)
+			CompareFalseTimes_tftp += 1;
+		else
+			CompareTrueTimes_tftp += 1;
+
+		memset(SBr.ReceiveBuf_tftp, 0, length);
+	}
+	else if(htons(tftp_ipv4 -> ip_id) == 0x0017)
+	{
+		Receivetftppkt++;
+
+		SBr.ReceiveBuf_tftp = (char*)tftp_ipv4;
+
+		for(j_tftp = 0; j_tftp < length; j_tftp++)
+		{
+			if(SBr.ReceiveBuf_tftp[j_tftp] != SBr.SendBuf_tftpemta[j_tftp])
+				compare_tftpemta += 1;
+		}
+
+		printf("\n");
+		printf("***************** TFTP Compare Data **********************************\n");
+		printf(" 'TFTP EMTA' Compare data --------> %s\n", !compare_tftpemta ? "true" : "false");
+		printf("*****************************************************************\n");
+
+		if(compare_tftpemta > 0)
+			CompareFalseTimes_tftp += 1;
+		else
+			CompareTrueTimes_tftp += 1;
+		
+		memset(SBr.ReceiveBuf_tftp, 0, length);
+	}
+
+				
 
 }
 
@@ -959,7 +1126,7 @@ void Option_Receive(int D_times, char sop)
 					nanosleep(&send_ts, NULL);
 
 					//Sending TFTP Packet
-					/*if(pcap_sendpacket(p_lan, tftpPacket_docsis, sizeof(tftpPacket_docsis)) < 0){
+					if(pcap_sendpacket(p_lan, tftpPacket_docsis, sizeof(tftpPacket_docsis)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 						pthread_mutex_unlock(&pcap_send_mutex);
 						return;
@@ -968,7 +1135,7 @@ void Option_Receive(int D_times, char sop)
 						PacketMode = "TFTP";
 
 					nanosleep(&send_ts, NULL);
-*/
+
 					if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, sizeof(DHCPdocsisBuf_offer)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
 						pthread_mutex_unlock(&pcap_send_mutex);
@@ -986,7 +1153,6 @@ void Option_Receive(int D_times, char sop)
 					SBr.SendBuf_arp[11] = 0x22;
 					ArpPacket[9] = 0x22;
 					ArpPacket[29] = 0x22;
-
 
 					if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
@@ -1010,7 +1176,7 @@ void Option_Receive(int D_times, char sop)
 					nanosleep(&send_ts, NULL);
 
 					//Sending TFTP Packet
-/*					if(pcap_sendpacket(p_lan, tftpPacket_emta, sizeof(tftpPacket_emta)) < 0){
+					if(pcap_sendpacket(p_lan, tftpPacket_emta, sizeof(tftpPacket_emta)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 						pthread_mutex_unlock(&pcap_send_mutex);
 						return;
@@ -1019,7 +1185,7 @@ void Option_Receive(int D_times, char sop)
 						PacketMode = "TFTP";
 
 					nanosleep(&send_ts, NULL);
-*/
+
 					if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, sizeof(DHCPpktcBuf_offer)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
 						pthread_mutex_unlock(&pcap_send_mutex);
@@ -1044,17 +1210,25 @@ void Option_Receive(int D_times, char sop)
 
 		printf("**************************************************\n");
 		printf("--------LAN  ==> ==> ==> ==> ==> ==>   WAN--------\n");
+		printf("................... Discover .....................\n");
 		printf("Discover -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n", CompareFalseTimes);
 		printf("True  : %d\n", CompareTrueTimes);
 		printf("Discover -> Not arrive receive Port packet\n");
 		printf("Lose Packet : %d\n", D_times - Receivedocsispkt);
-		printf("..................................................\n");
+		printf(".................... ARP .........................\n");
 		printf("ARP -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n", CompareFalseTimes_arp);
 		printf("True  : %d\n", CompareTrueTimes_arp);
 		printf("ARP -> Not arrive receive Port packet\n");
 		printf("Lose Packet : %d\n", D_times - Receivearppkt);
+		printf(".................... TFTP ........................\n");
+		printf("TFTP -> Compare Send packet and Receive packet\n");
+		printf("False : %d\n", CompareFalseTimes_tftp);
+		printf("True  : %d\n", CompareTrueTimes_tftp);
+		printf("TFTP -> Not arrive receive Port packet\n");
+		printf("Lose Packet : %d\n", D_times - Receivetftppkt);
+		printf("\n");
 		printf("\n");
 		printf("--------LAN  <== <== <== <== <== <==   WAN--------\n");
 		printf("OFFER -> Compare Send packet and Receive packet\n");
@@ -1072,11 +1246,14 @@ void Option_Receive(int D_times, char sop)
 		CompareTrueTimes_offer = 0;
 		CompareTrueTimes_arp = 0;
 		CompareFalseTimes_arp = 0;
+		CompareTrueTimes_tftp = 0;
+		CompareFalseTimes_tftp = 0;
 
 		//Init Lose packet record count
 		Receivedocsispkt = 0;
 		Receivepktcpkt = 0;
 		Receivearppkt = 0;
+		Receivetftppkt = 0;
 
 		KeepRunning = 0;
 		Running_Times = 0;
@@ -1306,6 +1483,13 @@ void MACandVIDplus()
 			SBr.SendBuf_arp[12] += 0x01;
 			SBr.SendBuf_arp[13] = 0x00;
 
+			/*TFTP MAC add*/
+			tftpPacket_docsis[10] += 0x01;
+			tftpPacket_emta[10] += 0x01;
+
+			tftpPacket_docsis[11] = 0x00;
+			tftpPacket_emta[11] = 0x00;
+
 		}
 		else
 		{
@@ -1322,6 +1506,10 @@ void MACandVIDplus()
 			/*ARP Sender MAC Add*/
 			ArpPacket[31] += 0x01;
 			SBr.SendBuf_arp[13] += 0x01;
+
+			/*TFTP MAC Add*/
+			tftpPacket_docsis[11] += 0x01;
+			tftpPacket_emta[11] += 0x01;
 		}
 	}
 	else
@@ -1348,6 +1536,12 @@ void MACandVIDplus()
 
 		SBr.SendBuf_arp[12] = 0x00;
 		SBr.SendBuf_arp[12] = 0x00;
+		
+		/*TFTP MAC Add*/	
+		tftpPacket_docsis[10] = 0x00;
+		tftpPacket_emta[10] = 0x00;
+		tftpPacket_docsis[10] = 0x00;
+		tftpPacket_emta[10] = 0x00;
 	}
 
 	//vlan tag
@@ -1366,6 +1560,13 @@ void MACandVIDplus()
 			/*ARP VLAN ID Add to next byte for keep plus*/
 			ArpPacket[14] += 0x01;
 			ArpPacket[15] += 0x00;
+			
+			/*TFTP VLAN ID Add to next byte for keep plus*/
+			tftpPacket_docsis[14] += 0x01;
+			tftpPacket_emta[14] += 0x01;
+
+			tftpPacket_docsis[15] = 0x00;
+			tftpPacket_emta[15] = 0x00;
 		}
 		else
 		{
@@ -1375,6 +1576,10 @@ void MACandVIDplus()
 			
 			/*ARP VLAN ID Add*/
 			ArpPacket[15] += 0x01;
+
+			/*TFTP VLAN ID Add*/
+			tftpPacket_docsis[15] += 0x01;
+			tftpPacket_emta[15] += 0x01;
 		}
 	}
 	else
@@ -1388,10 +1593,16 @@ void MACandVIDplus()
 		/*ARP VLAN ID the last two bytes set to defalt 2049*/
 		ArpPacket[14] = 0x08;
 		ArpPacket[15] = 0x01;
+			
+		/*TFTP VLAN ID the last two bytes set to defalt 2049*/
+		tftpPacket_docsis[14] = 0x08;
+		tftpPacket_emta[14] = 0x08;
+		tftpPacket_docsis[15] = 0x01;
+		tftpPacket_emta[15] = 0x01;
 	}
 }
 
-//Not in use
+/*For get WAN Port mac*/
 void GetEthMACaddress(char eth_port[])
 {
 	int fd;
@@ -1421,4 +1632,18 @@ void GetEthMACaddress(char eth_port[])
 	DHCPpktcBuf_offer[9] = mac[3];
 	DHCPpktcBuf_offer[10] = mac[4];
 	DHCPpktcBuf_offer[11] = mac[5];
+
+	tftpPacket_docsis[0] = mac[0];
+	tftpPacket_docsis[1] = mac[1];
+	tftpPacket_docsis[2] = mac[2];
+	tftpPacket_docsis[3] = mac[3];
+	tftpPacket_docsis[4] = mac[4];
+	tftpPacket_docsis[5] = mac[5];
+
+	tftpPacket_emta[0] = mac[0];
+	tftpPacket_emta[1] = mac[1];
+	tftpPacket_emta[2] = mac[2];
+	tftpPacket_emta[3] = mac[3];
+	tftpPacket_emta[4] = mac[4];
+	tftpPacket_emta[5] = mac[5];
 }
