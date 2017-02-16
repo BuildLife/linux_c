@@ -62,11 +62,11 @@ unsigned int CompareFalseTimes_offer = 0, CompareTrueTimes_offer = 0;
 unsigned int CompareFalseTimes_arp = 0, CompareTrueTimes_arp = 0;
 unsigned int CompareFalseTimes_tftp = 0, CompareTrueTimes_tftp = 0;
 
-/*Socket Server for Auto testing flag 1 : open auto ; 0 : close auto*/
+/* Socket Server for Auto testing flag ->  1 : open auto ; 0 : close auto */
 int AutoTesting = 0;
 
 /*Record Lose packet*/
-int Receivedocsispkt = 0, Receivepktcpkt = 0, Receivearppkt = 0, Receivetftppkt = 0;
+int ReceiveDOCSISpkt = 0, ReceiveOFFERpkt = 0, ReceiveARPpkt = 0, ReceiveTFTPpkt = 0;
 
 /*Pthread lock*/
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -174,6 +174,13 @@ void ThreadClientSocket()
 					/*Set ARP VLAN ID*/
 					ArpPacket[14] = (Start_VID >> 8) & 0xff;
 					ArpPacket[15] = (Start_VID) & 0xff;
+					
+					/*Set TFTP VLAN ID*/
+					tftpPacket_docsis[14] = (Start_VID >> 8) & 0xff;
+					tftpPacket_docsis[15] = (Start_VID) & 0xff;
+
+					tftpPacket_emta[14] = (Start_VID >> 8) & 0xff;
+					tftpPacket_emta[15] = (Start_VID) & 0xff;
 				}
 				
 				if(Running_Times == 0)
@@ -241,7 +248,11 @@ void Menu(char *mode)
 		{
 			printf("Enter Send Times or Enter 0 keep sending loop:\n");
 			printf("Sending Times : ");
-			scanf("%u", &Running_Times);
+			if(scanf("%u", &Running_Times) == 0)
+			{
+				printf("Enter the wrong word , Running Times set 1 time\n");
+				Running_Times = 1;
+			}
 			if(Running_Times == 0)
 			{
 				/*Use in while loop always still Running*/
@@ -252,10 +263,19 @@ void Menu(char *mode)
 				StopLoopRunning = 0;
 			}
 
-			printf("Enter Start VID(limit : 2292):\n");
+			printf("Enter Start VID(Range : 2049 ~ 2512):\n");
 			printf("VID : ");
-			scanf("%u", &Start_VID);
-			if(Start_VID >= 2049 && Start_VID < 2512)
+			if(scanf("%d", &Start_VID) != 1)
+			{
+				printf("Enter the wrong word, so the VID set 2049\n");
+				Start_VID = 2049;
+			}
+			else if(Start_VID < 2049 || Start_VID > 2512)
+			{
+				printf("The Enter VID number out of the range , so the VID set 2049\n");
+				Start_VID = 2049;
+			}
+			else if(Start_VID >= 2049 && Start_VID < 2512)
 			{	
 				/*Set DHCP VLAN ID*/
 				DHCPdocsisBuf[14] = (Start_VID >> 8) & 0xff;
@@ -595,7 +615,7 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 		if(htons(ipv4 -> ip_id) == 0xdead)
 		{
 			//Record receive docsis packet
-			Receivedocsispkt++;
+			ReceiveDOCSISpkt++;
 
 	
 			SBr.ReceiveBuf = (char*)ipv4;
@@ -635,14 +655,14 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			memset(SBr.ReceiveBuf, 0, length);
 			
 			/*for test*/
-			if((!compare_num) == 0)
-				StopLoopRunning = 1;
+	//		if((!compare_num) == 0)
+	//			StopLoopRunning = 1;
 
 		}//htons(ipv4 -> ip_id)
 		else if(htons(ipv4 -> ip_sum) == 0xa381 || htons(ipv4 -> ip_sum) == 0xa3ef)
 		{
 			//Record receive pktc packet
-			Receivepktcpkt++;
+			ReceiveOFFERpkt++;
 
 			SBr.ReceiveBuf_offer = (char*)ipv4;
 			if(DHCPBufMode == "docsis")
@@ -706,7 +726,7 @@ void dump_ARP_ip(arp_header *arp_ipv4, int length)
 	//Avoid the others data mix in it.
 	if(!strcmp(send_sender_ip, receive_sender_ip)) {
 		//Record Receive packet 
-		Receivearppkt++;
+		ReceiveARPpkt++;
 
 		SBr.ReceiveBuf_arp = (char*)arp_ipv4;
 		
@@ -737,7 +757,7 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 
 	if(htons(tftp_ipv4 -> ip_id) == 0x0006)
 	{
-		Receivetftppkt++;
+		ReceiveTFTPpkt++;
 
 		SBr.ReceiveBuf_tftp = (char*)tftp_ipv4;
 		
@@ -762,7 +782,7 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 	}
 	else if(htons(tftp_ipv4 -> ip_id) == 0x0017)
 	{
-		Receivetftppkt++;
+		ReceiveTFTPpkt++;
 
 		SBr.ReceiveBuf_tftp = (char*)tftp_ipv4;
 
@@ -959,7 +979,7 @@ void read_loop()
 	struct bpf_program bpf_p;
 	bpf_u_int32 net, mask;
 
-	char protocol_filter[16];
+	char protocol_filter[8];
 
 
 	if(PacketMode == "DHCP" || PacketMode == "TFTP")
@@ -1215,19 +1235,19 @@ void Option_Receive(int D_times, char sop)
 		printf("False : %d\n", CompareFalseTimes);
 		printf("True  : %d\n", CompareTrueTimes);
 		printf("Discover -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - Receivedocsispkt);
+		printf("Lose Packet : %d\n", D_times - ReceiveDOCSISpkt);
 		printf(".................... ARP .........................\n");
 		printf("ARP -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n", CompareFalseTimes_arp);
 		printf("True  : %d\n", CompareTrueTimes_arp);
 		printf("ARP -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - Receivearppkt);
+		printf("Lose Packet : %d\n", D_times - ReceiveARPpkt);
 		printf(".................... TFTP ........................\n");
 		printf("TFTP -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n", CompareFalseTimes_tftp);
 		printf("True  : %d\n", CompareTrueTimes_tftp);
 		printf("TFTP -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - Receivetftppkt);
+		printf("Lose Packet : %d\n", D_times - ReceiveTFTPpkt);
 		printf("\n");
 		printf("\n");
 		printf("--------LAN  <== <== <== <== <== <==   WAN--------\n");
@@ -1235,7 +1255,7 @@ void Option_Receive(int D_times, char sop)
 		printf("False : %d\n", CompareFalseTimes_offer);
 		printf("True  : %d\n", CompareTrueTimes_offer);
 		printf("OFFER -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - Receivepktcpkt);
+		printf("Lose Packet : %d\n", D_times - ReceiveOFFERpkt);
 		printf("***************************************************\n");
 		printf("\n");
 
@@ -1250,10 +1270,10 @@ void Option_Receive(int D_times, char sop)
 		CompareFalseTimes_tftp = 0;
 
 		//Init Lose packet record count
-		Receivedocsispkt = 0;
-		Receivepktcpkt = 0;
-		Receivearppkt = 0;
-		Receivetftppkt = 0;
+		ReceiveDOCSISpkt = 0;
+		ReceiveOFFERpkt = 0;
+		ReceiveARPpkt = 0;
+		ReceiveTFTPpkt = 0;
 
 		KeepRunning = 0;
 		Running_Times = 0;
@@ -1590,11 +1610,11 @@ void MACandVIDplus()
 		DHCPpktcBuf[15] = 0x01;
 		DHCPdocsisBuf[15] = 0X01;
 		
-		/*ARP VLAN ID the last two bytes set to defalt 2049*/
+		/*ARP VLAN ID the last two bytes set to default 2049*/
 		ArpPacket[14] = 0x08;
 		ArpPacket[15] = 0x01;
 			
-		/*TFTP VLAN ID the last two bytes set to defalt 2049*/
+		/*TFTP VLAN ID the last two bytes set to default 2049*/
 		tftpPacket_docsis[14] = 0x08;
 		tftpPacket_emta[14] = 0x08;
 		tftpPacket_docsis[15] = 0x01;
