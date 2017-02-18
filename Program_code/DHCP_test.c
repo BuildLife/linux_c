@@ -18,6 +18,9 @@ pthread_t pthreadProcessStatus;
 pthread_t pthreadSocketClient;
 /****************************************/
 
+unsigned char Docsis_sidMAC[2048][8] = {0};
+unsigned char Pktc_sidMAC[2048][8] = {0};
+
 /*Define use function*/
 void Signal_Stophandler();
 void ThreadClientSocket();
@@ -34,6 +37,7 @@ void read_loop_lan();
 void Option_Receive(int, char);
 void send_packet();
 void GetEthMACaddress(char []);
+void InsertMACTable(char *, char *);
 
 
 //Socket Client and Server Command
@@ -1124,14 +1128,17 @@ void Option_Receive(int D_times, char sop)
 					ArpPacket[9] = 0x11;
 					ArpPacket[29] = 0x11;
 
+
 					if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 						pthread_mutex_unlock(&pcap_send_mutex);
 						return;
 					}
 					else
+					{
 						PacketMode = "DHCP";
-
+						InsertMACTable("docsis", LAN_docsis_ethhdr -> smac);
+					}
 					nanosleep(&send_ts, NULL);
 
 					//Sending ARP Packet
@@ -1174,14 +1181,17 @@ void Option_Receive(int D_times, char sop)
 					ArpPacket[9] = 0x22;
 					ArpPacket[29] = 0x22;
 
+
 					if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
 						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 						pthread_mutex_unlock(&pcap_send_mutex);
 						return;
 					}
 					else
+					{
 						PacketMode = "DHCP";
-
+						InsertMACTable("pktc", LAN_pktc_ethhdr -> smac);
+					}
 					nanosleep(&send_ts, NULL);
 			
 					//Sending ARP Packet
@@ -1257,6 +1267,33 @@ void Option_Receive(int D_times, char sop)
 		printf("OFFER -> Not arrive receive Port packet\n");
 		printf("Lose Packet : %d\n", D_times - ReceiveOFFERpkt);
 		printf("***************************************************\n");
+		printf("\n");
+
+
+		/*only for test*/
+		int test = 0;
+		int x_t = 0;
+		printf("docsis------------------->\n");
+		for(test = 0;test < 10; test++)
+		{
+			for(x_t = 0;x_t < 8;x_t++)
+			{
+				printf("%02x,",Docsis_sidMAC[test][x_t]);
+			}
+		printf("\n");
+		}
+		printf("\n");
+		int testa = 0;
+		int x_ta = 0;
+		printf("pktc------------------->\n");
+		for(testa = 0;testa < 10; testa++)
+		{
+			for(x_ta = 0;x_ta < 8;x_ta++)
+			{
+				printf("%02x,",Pktc_sidMAC[testa][x_ta]);
+			}
+		printf("\n");
+		}
 		printf("\n");
 
 		/***** Init default value *****/
@@ -1666,4 +1703,47 @@ void GetEthMACaddress(char eth_port[])
 	tftpPacket_emta[3] = mac[3];
 	tftpPacket_emta[4] = mac[4];
 	tftpPacket_emta[5] = mac[5];
+}
+
+int items = 0;
+char def_sid_number = 0x00;
+char def_sid_title  = 'A';
+
+void InsertMACTable(char *DhcpBufMode, char *MAC)
+{
+	int var = 2;
+	int  flag = 0;
+	
+	if(def_sid_number == 0xff)
+	{
+		def_sid_number = 0x00;
+		def_sid_title += 1;
+	}
+	memset(MAC, 0 ,128);
+	int macsl = strlen(MAC);
+	memcpy(Docsis_sidMAC[items],MAC,macsl);
+	memcpy(Pktc_sidMAC[items],MAC,macsl);
+	
+	if(DhcpBufMode == "docsis")
+	{
+		strcpy(*(Docsis_sidMAC + items) + 0, &def_sid_title);
+		strcpy(*(Docsis_sidMAC + items) + 1, &def_sid_number);
+		strcpy(*(Docsis_sidMAC + items) + 2, MAC);
+		flag = 0;
+	}
+	else if(DhcpBufMode == "pktc")
+	{
+		strcpy(*(Pktc_sidMAC + items) + 0, &def_sid_title);
+		strcpy(*(Pktc_sidMAC + items) + 1, &def_sid_number);
+		strcpy(*(Pktc_sidMAC + items) + 2, MAC);
+		flag = 1;
+	}
+
+	//if(flag == 1)
+//	{
+		def_sid_number += 1;
+		items += 1;
+//	}
+
+	//return 'o';
 }
