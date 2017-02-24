@@ -1,6 +1,5 @@
 #include "lib_file.h"
 
-
 /*Define Thread**************************/
 /*Send Packet thread*/
 pthread_t pthreadSendPacket;
@@ -18,27 +17,8 @@ pthread_t pthreadProcessStatus;
 pthread_t pthreadSocketClient;
 /****************************************/
 
-unsigned char Docsis_sidMAC[2048][8] = {0};
-unsigned char Pktc_sidMAC[2048][8] = {0};
-
-/*Define use function*/
-void Signal_Stophandler();
-void ThreadClientSocket();
-void Memu(char *);
-char *mac_ntoa(unsigned char *);
-void VGM_MODE(u_int32_t , const u_int8_t *);
-void dump_DHCP_ip(ip_header *, int);
-void dump_ARP_ip(arp_header *, int);
-void dump_TFTP_ip(ip_header *, int);
-void pcap_handler_func(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
-void pcap_handler_func_lan(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
-void read_loop();
-void read_loop_lan();
-void Option_Receive(int, char);
-void send_packet();
-void GetEthMACaddress(char []);
-void InsertMACTable(char *, char *);
-
+unsigned char Docsis_sidMAC[2048][10] = {0};
+unsigned char Pktc_sidMAC[2048][10] = {0};
 
 //Socket Client and Server Command
 //Socket_Cmd socketcmd = {0}; 
@@ -78,6 +58,10 @@ pthread_mutex_t pcap_read_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*Sending Packet for DHCP or ARP*/
 char *PacketMode = "default";
+
+/*Option 82*/
+char *Option82 = "default";
+
 
 int StopLoopRunning = 0;
 
@@ -315,6 +299,10 @@ char *mac_ntoa(unsigned char *mac_d)
 //Combinded SVGM and DVGM in this Function
 void VGM_MODE(u_int32_t length, const u_int8_t *content)
 {
+	int FalseTImes = 0;
+	int ComparesTimes = 0;
+	int ReceiveTimes = 0;
+
 	/********************************* For LAN buffer **************************************/
 	//docsis buffer 
 	char LAN_docsis_dstmac[MAC_ADDRSTRLEN] = {}, LAN_docsis_srcmac[MAC_ADDRSTRLEN] = {};
@@ -602,6 +590,9 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 			printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_tftp_TPID,WAN_TPID);
 	  		
 			dump_TFTP_ip((ip_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
+
+			/*Option82 Function*/
+			FalseTimes = Option82_Compare(DhcpBufMode, Docsis_sidMAC[ReceiveTimes++][1], WAN_dstmac, WAN_TPID, &CompareTimes, 6);
 	  	}
 	}//PacketMode == "TFTP"
 }
@@ -621,7 +612,6 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			//Record receive docsis packet
 			ReceiveDOCSISpkt++;
 
-	
 			SBr.ReceiveBuf = (char*)ipv4;
 
 			if(DHCPBufMode == "docsis")
@@ -696,9 +686,9 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 				CompareTrueTimes_offer += 1;
 
 			printf("\n");
-			printf("***************** Compare Data **********************************\n");
+			printf("********** Compare Data *************\n");
 			printf(" '%s offer' Compare data --------> %s\n", DHCPBufMode,!compare_offer ? "true" : "false");
-			printf("*****************************************************************\n");
+			printf("*************************************\n");
 			
 			/*Clear ReceiveBuf to zero*/
 			memset(SBr.ReceiveBuf_offer, 0, length);
@@ -741,9 +731,9 @@ void dump_ARP_ip(arp_header *arp_ipv4, int length)
 		}
 
 		printf("\n");
-		printf("***************** ARP Compare Data **********************************\n");
+		printf("******* ARP Compare Data *******\n");
 		printf(" 'ARP' Compare data --------> %s\n", !compare_arp ? "true" : "false");
-		printf("*****************************************************************\n");
+		printf("********************************\n");
 				
 		if(compare_arp > 0)
 			CompareFalseTimes_arp += 1;
@@ -772,9 +762,9 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 		}
 
 		printf("\n");
-		printf("***************** TFTP Compare Data **********************************\n");
+		printf("********** TFTP Compare Data ***********\n");
 		printf(" 'TFTP DOCSIS' Compare data --------> %s\n", !compare_tftpdocsis ? "true" : "false");
-		printf("*****************************************************************\n");
+		printf("****************************************\n");
 		
 		
 		if(compare_tftpdocsis > 0)
@@ -797,9 +787,9 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 		}
 
 		printf("\n");
-		printf("***************** TFTP Compare Data **********************************\n");
+		printf("******** TFTP Compare Data ***********\n");
 		printf(" 'TFTP EMTA' Compare data --------> %s\n", !compare_tftpemta ? "true" : "false");
-		printf("*****************************************************************\n");
+		printf("**************************************\n");
 
 		if(compare_tftpemta > 0)
 			CompareFalseTimes_tftp += 1;
@@ -808,11 +798,37 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 		
 		memset(SBr.ReceiveBuf_tftp, 0, length);
 	}
-
-				
-
 }
 
+
+/*  default_vid = 10;
+	docsis_vid = 20;
+	pktc_vid = 30; */
+/*Option 82 compare*/
+int Option82_Compare(char *DHCPmode, int numbers, char MAC[], unsigned int VID, int *Compares, unsigned int length)
+{
+	int i = 0, j = 0;
+	int false_times = 0;
+	char item_docsis;
+	char item_pktc;
+
+	if(DHCPmode == "docsis" && strncmp(*(Docsis_sidMAC + numbers) + 3, MAC, 4) == 0)
+	{
+		if(VID != docsis_vid)
+			false_times += 1;
+		else
+			*Compares += 1;
+	}
+	else if(DHCPmode == "pktc" && strncmp(*(Pktc_sidMAC + numbers) + 3, MAC, 4) == 0)
+	{
+		if(VID != pktc_vid)
+			false_times += 1;
+		else
+			*Compares += 1;
+	}
+
+	return false_times;
+}
 
 
 /*WAN Port read Function*/
@@ -837,7 +853,7 @@ void pcap_handler_func(unsigned char *user,const struct pcap_pkthdr *header, con
 	char receive_sender_ip[16] = {0};
 	sprintf(send_sender_ip, "%d.%d.%d.%d", ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff);
 
-	//identifi receive was the same buffer
+	//Identification receive was the same buffer
 	unsigned short BufferIdentification;
 
 	if(ChangeMode == "DVGM")
@@ -985,13 +1001,11 @@ void read_loop()
 
 	char protocol_filter[8];
 
-
 	if(PacketMode == "DHCP" || PacketMode == "TFTP")
 		sprintf(protocol_filter, "%s", "udp");
 	else if(PacketMode == "ARP")
 		sprintf(protocol_filter, "%s", "arp");
 
-	//CASTLE USEING : ubuntu 12.04
 	p_read = pcap_open_live(WAN_port, 65536, 1, 10, errbuf);
 
 	if( p_read == NULL ){
@@ -1075,12 +1089,17 @@ void Option_Receive(int D_times, char sop)
 	/*Random Sending data*/
 	int Random_send = 0;
 
+	/*Sums sends packet times*/
+	int docsis_sendtimes = 0;
+	int arp_sendtimes = 0;
+	int tftp_sendtimes = 0;
+	int offer_sendtimes = 0;
+
 	char errbuf[PCAP_ERRBUF_SIZE];
 
 	/*LAN Port pcap send*/
 	pcap_t *p_lan;
 	
-	//CASTLE USEING : ubuntu 12.04
 	p_lan = pcap_open_live(LAN_port, 65536, 1, 10, errbuf);
 	
 	if( p_lan == NULL )
@@ -1118,112 +1137,133 @@ void Option_Receive(int D_times, char sop)
 
 			printf("Send Times --------------> %d\n", D_times);
 
-			if(Random_send >= 1 && Random_send < 50)
-			{
-					DHCPBufMode = "docsis";
+		//	if(Random_send >= 1 && Random_send < 50)
+		//	{
+			/*********************** Sending Docsis packet ******************************/
+				DHCPBufMode = "docsis";
 
-					pthread_mutex_lock(&pcap_send_mutex);
+				pthread_mutex_lock(&pcap_send_mutex);
 					
-					SBr.SendBuf_arp[11] = 0x11;
-					ArpPacket[9] = 0x11;
-					ArpPacket[29] = 0x11;
+				SBr.SendBuf_arp[11] = 0x11;
+				ArpPacket[9] = 0x11;
+				ArpPacket[29] = 0x11;
 
-
-					if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-					else
-					{
-						PacketMode = "DHCP";
-						InsertMACTable("docsis", LAN_docsis_ethhdr -> smac);
-					}
-					nanosleep(&send_ts, NULL);
-
-					//Sending ARP Packet
-					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-					else
-						PacketMode = "ARP";
-
-					nanosleep(&send_ts, NULL);
-
-					//Sending TFTP Packet
-					if(pcap_sendpacket(p_lan, tftpPacket_docsis, sizeof(tftpPacket_docsis)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-					else
-						PacketMode = "TFTP";
-
-					nanosleep(&send_ts, NULL);
-
-					if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, sizeof(DHCPdocsisBuf_offer)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-
+				if(pcap_sendpacket(p_lan, DHCPdocsisBuf, sizeof(DHCPdocsisBuf)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 					pthread_mutex_unlock(&pcap_send_mutex);
-			}
-			else if(Random_send >= 50 && Random_send <= 100)
-			{
-					DHCPBufMode = "pktc";
+					return;
+				}
+				else
+				{
+					docsis_sendtimes++;
+					PacketMode = "DHCP";
+					InsertMACTable("docsis", LAN_docsis_ethhdr -> smac);
+				}
+				nanosleep(&send_ts, NULL);
 
-					pthread_mutex_lock(&pcap_send_mutex);
+				//Sending ARP Packet
+				if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return;
+				}
+				else
+				{
+					arp_sendtimes++;
+					PacketMode = "ARP";
+				}
+				nanosleep(&send_ts, NULL);
+
+				//Sending TFTP Packet
+				if(pcap_sendpacket(p_lan, tftpPacket_docsis, sizeof(tftpPacket_docsis)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return;
+				}
+				else
+				{
+					tftp_sendtimes++;
+					PacketMode = "TFTP";
+				}
+				nanosleep(&send_ts, NULL);
+
+				if(pcap_sendpacket(p_wan, DHCPdocsisBuf_offer, sizeof(DHCPdocsisBuf_offer)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return;
+				}
+				else
+				{
+					offer_sendtimes++;
+				}	
+
+				pthread_mutex_unlock(&pcap_send_mutex);
+
+				sleep(1);
+		//	}
+		//else if(Random_send >= 50 && Random_send <= 100)
+		//	{
+			/********************** Sending EMTA packet ********************************/
+				DHCPBufMode = "pktc";
+
+				pthread_mutex_lock(&pcap_send_mutex);
 					
-					SBr.SendBuf_arp[11] = 0x22;
-					ArpPacket[9] = 0x22;
-					ArpPacket[29] = 0x22;
+				SBr.SendBuf_arp[11] = 0x22;
+				ArpPacket[9] = 0x22;
+				ArpPacket[29] = 0x22;
 
-
-					if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-					else
-					{
-						PacketMode = "DHCP";
-						InsertMACTable("pktc", LAN_pktc_ethhdr -> smac);
-					}
-					nanosleep(&send_ts, NULL);
-			
-					//Sending ARP Packet
-					if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-					else
-						PacketMode = "ARP";
-
-					nanosleep(&send_ts, NULL);
-
-					//Sending TFTP Packet
-					if(pcap_sendpacket(p_lan, tftpPacket_emta, sizeof(tftpPacket_emta)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-					else
-						PacketMode = "TFTP";
-
-					nanosleep(&send_ts, NULL);
-
-					if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, sizeof(DHCPpktcBuf_offer)) < 0){
-						fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
-						pthread_mutex_unlock(&pcap_send_mutex);
-						return;
-					}
-
+				if(pcap_sendpacket(p_lan, DHCPpktcBuf, sizeof(DHCPpktcBuf)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
 					pthread_mutex_unlock(&pcap_send_mutex);
-			}
+					return;
+				}
+				else
+				{
+					docsis_sendtimes++;
+					PacketMode = "DHCP";
+					InsertMACTable("pktc", LAN_pktc_ethhdr -> smac);
+				}
+				nanosleep(&send_ts, NULL);
+		
+				//Sending ARP Packet
+				if(pcap_sendpacket(p_lan, ArpPacket, sizeof(ArpPacket)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return;
+				}
+				else
+				{
+					arp_sendtimes++;
+					PacketMode = "ARP";
+				}
+				nanosleep(&send_ts, NULL);
+
+				//Sending TFTP Packet
+				if(pcap_sendpacket(p_lan, tftpPacket_emta, sizeof(tftpPacket_emta)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_lan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return;
+				}
+				else
+				{
+					tftp_sendtimes++;
+					PacketMode = "TFTP";
+				}
+
+				nanosleep(&send_ts, NULL);
+
+				if(pcap_sendpacket(p_wan, DHCPpktcBuf_offer, sizeof(DHCPpktcBuf_offer)) < 0){
+					fprintf(stderr, "pcap_sendpacket:%s\n", pcap_geterr(p_wan));
+					pthread_mutex_unlock(&pcap_send_mutex);
+					return;
+				}
+				else
+				{
+					offer_sendtimes++;
+				}	
+
+				pthread_mutex_unlock(&pcap_send_mutex);
+	//		}
 			
 			sleep(1);
 
@@ -1245,19 +1285,19 @@ void Option_Receive(int D_times, char sop)
 		printf("False : %d\n", CompareFalseTimes);
 		printf("True  : %d\n", CompareTrueTimes);
 		printf("Discover -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - ReceiveDOCSISpkt);
+		printf("Lose Packet : %d\n", docsis_sendtimes - ReceiveDOCSISpkt);
 		printf(".................... ARP .........................\n");
 		printf("ARP -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n", CompareFalseTimes_arp);
 		printf("True  : %d\n", CompareTrueTimes_arp);
 		printf("ARP -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - ReceiveARPpkt);
+		printf("Lose Packet : %d\n", arp_sendtimes - ReceiveARPpkt);
 		printf(".................... TFTP ........................\n");
 		printf("TFTP -> Compare Send packet and Receive packet\n");
 		printf("False : %d\n", CompareFalseTimes_tftp);
 		printf("True  : %d\n", CompareTrueTimes_tftp);
 		printf("TFTP -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - ReceiveTFTPpkt);
+		printf("Lose Packet : %d\n", tftp_sendtimes - ReceiveTFTPpkt);
 		printf("\n");
 		printf("\n");
 		printf("--------LAN  <== <== <== <== <== <==   WAN--------\n");
@@ -1265,18 +1305,19 @@ void Option_Receive(int D_times, char sop)
 		printf("False : %d\n", CompareFalseTimes_offer);
 		printf("True  : %d\n", CompareTrueTimes_offer);
 		printf("OFFER -> Not arrive receive Port packet\n");
-		printf("Lose Packet : %d\n", D_times - ReceiveOFFERpkt);
+		printf("Lose Packet : %d\n", offer_sendtimes - ReceiveOFFERpkt);
 		printf("***************************************************\n");
 		printf("\n");
 
 
 		/*only for test*/
-		int test = 0;
+		/*int test = 0;
 		int x_t = 0;
 		printf("docsis------------------->\n");
-		for(test = 0;test < 10; test++)
+		for(test = 0;test < 100; test++)
 		{
-			for(x_t = 0;x_t < 8;x_t++)
+			printf("%c,",Docsis_sidMAC[test][0]);
+			for(x_t = 1;x_t < 8;x_t++)
 			{
 				printf("%02x,",Docsis_sidMAC[test][x_t]);
 			}
@@ -1286,16 +1327,17 @@ void Option_Receive(int D_times, char sop)
 		int testa = 0;
 		int x_ta = 0;
 		printf("pktc------------------->\n");
-		for(testa = 0;testa < 10; testa++)
+		for(testa = 0;testa < 100; testa++)
 		{
-			for(x_ta = 0;x_ta < 8;x_ta++)
+			printf("%c,",Pktc_sidMAC[testa][0]);
+			for(x_ta = 1;x_ta < 8;x_ta++)
 			{
 				printf("%02x,",Pktc_sidMAC[testa][x_ta]);
 			}
 		printf("\n");
 		}
 		printf("\n");
-
+*/
 		/***** Init default value *****/
 		CompareFalseTimes = 0;
 		CompareTrueTimes = 0;
@@ -1318,6 +1360,8 @@ void Option_Receive(int D_times, char sop)
 		StopLoopRunning = 0;
 		D_times = 0;
 		Menu("default");
+
+		Start_VID = 2049;
 		/******************************/
 			
 		pcap_close(p_wan);
@@ -1521,13 +1565,6 @@ void MACandVIDplus()
 
 			DHCPdocsisBuf[11] = 0x00;
 			DHCPpktcBuf[11] = 0x00;
-			
-			/*DHCP Bootstrap Layer MAC Add*/
-		/*	DHCPdocsisBuf[78] += 0x01;
-			DHCPpktcBuf[78] += 0x01;
-
-			DHCPdocsisBuf[79] = 0x00;
-			DHCPpktcBuf[79] = 0x00;*/
 									
 			/*ARP MAC Add*/
 			ArpPacket[10] += 0x01;
@@ -1554,10 +1591,6 @@ void MACandVIDplus()
 			DHCPdocsisBuf[11] += 0x01;
 			DHCPpktcBuf[11] += 0x01;
 
-			/*DHCP Bootstrap Layer MAC Add*/
-		/*	DHCPdocsisBuf[79] += 0x01;
-			DHCPpktcBuf[79] += 0x01;*/
-
 			/*ARP MAC Add*/
 			ArpPacket[11] += 0x01;
 			/*ARP Sender MAC Add*/
@@ -1577,12 +1610,6 @@ void MACandVIDplus()
 		DHCPpktcBuf[11] = 0x00;
 		DHCPdocsisBuf[11] = 0X00;
 
-		/*DHCP Bootstrap Layer MAC the last two bytes set to zero*/
-	/*	DHCPdocsisBuf[78] = 0x00;
-		DHCPpktcBuf[78] = 0x00;
-		DHCPdocsisBuf[79] = 0x00;
-		DHCPpktcBuf[79] = 0x00;
-	*/	
 		/*ARP MAC the last two bytes set to zero*/
 		ArpPacket[10] = 0x00;
 		ArpPacket[11] = 0x00;
@@ -1711,39 +1738,48 @@ char def_sid_title  = 'A';
 
 void InsertMACTable(char *DhcpBufMode, char *MAC)
 {
-	int var = 2;
+	int var = 3;
 	int  flag = 0;
 	
+	//memset(*(Pktc_sidMAC + items), 0, 8);
+	//memset(*(Docsis_sidMAC + items), 0, 8);
+	int docsis_vid = 0;
+	int pktc_vid = 0;
+	/*
+	docsis_vid = (DHCPdocsisBuf[14] & 0xff) << 8 | DHCPdocsisBuf[15] & 0xff;
+	pktc_vid = (DHCPpktcBuf[14] & 0xff) << 8 | DHCPpktc[15] & 0xff;
+	*/
+
 	if(def_sid_number == 0xff)
 	{
 		def_sid_number = 0x00;
 		def_sid_title += 1;
 	}
-	memset(MAC, 0 ,128);
-	int macsl = strlen(MAC);
-	memcpy(Docsis_sidMAC[items],MAC,macsl);
-	memcpy(Pktc_sidMAC[items],MAC,macsl);
+	int i = 0, j = 0;
 	
 	if(DhcpBufMode == "docsis")
 	{
 		strcpy(*(Docsis_sidMAC + items) + 0, &def_sid_title);
 		strcpy(*(Docsis_sidMAC + items) + 1, &def_sid_number);
-		strcpy(*(Docsis_sidMAC + items) + 2, MAC);
+		strcpy(*(Docsis_sidMAC + items) + 2, &DHCPdocsisBuf[14]);
+		strcpy(*(Docsis_sidMAC + items) + 3, &DHCPdocsisBuf[15]);
+		memcpy(*(Docsis_sidMAC + items) + 4, MAC, 6);
 		flag = 0;
 	}
 	else if(DhcpBufMode == "pktc")
 	{
 		strcpy(*(Pktc_sidMAC + items) + 0, &def_sid_title);
 		strcpy(*(Pktc_sidMAC + items) + 1, &def_sid_number);
-		strcpy(*(Pktc_sidMAC + items) + 2, MAC);
+		strcpy(*(Pktc_sidMAC + items) + 2, &DHCPpktcBuf[14]);
+		strcpy(*(Pktc_sidMAC + items) + 3, &DHCPpktcBuf[15]);
+		memcpy(*(Pktc_sidMAC + items) + 4, MAC, 6);
 		flag = 1;
 	}
 
-	//if(flag == 1)
-//	{
+	if(flag == 1)
+	{
 		def_sid_number += 1;
 		items += 1;
-//	}
-
-	//return 'o';
+	}
 }
+

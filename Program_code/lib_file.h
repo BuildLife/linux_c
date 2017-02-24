@@ -423,6 +423,13 @@ char tftpPacket_emta[] = {
 0x00, 0x62, 0x6c, 0x6b, 0x73, 0x69, 0x7a, 0x65,
 0x00, 0x31, 0x34, 0x34, 0x38, 0x00 };
 
+typedef enum{
+	default_vid = 10,
+	docsis_vid = 20,
+	pktc_vid = 30,
+}svgm_vid_table;
+
+
 typedef struct Send_Buf{
 	
 	char *SendBuf; //docsis buffer
