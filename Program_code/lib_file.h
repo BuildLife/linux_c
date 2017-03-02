@@ -481,3 +481,39 @@ void InsertSendBuffer();
 
 /*mac address and vid add by sending times*/
 void MACandVIDplus();
+
+void Signal_Stophandler();
+
+void ThreadClientSocket();
+
+void Menu(char*);
+
+char *MacaddrtoString(unsigned char *);
+
+void VGM_MODE(u_int32_t , const u_int8_t*);
+
+void dump_DHCP_ip(ip_header*, int);
+
+void dump_ARP_ip(arp_header*, int);
+
+void dump_TFTP_ip(ip_header*, int);
+
+int Option82_Compare(char*, int, char[], unsigned int, int *, unsigned int);
+
+void pcap_handler_func(unsigned char*, const struct pcap_pkthdr*, const unsigned char *);
+
+void pcap_handler_func_lan(unsigned char*, const struct pcap_pkthdr *, const unsigned char *);
+
+void read_loop();
+
+void read_loop_lan();
+
+void Option_ReceiveAndRunning(int, char);
+
+void Command_Option();
+
+void GetEthMACaddress(char []);
+
+int InsertMacTable(char*, char*);
+
+char *GetLocalTimetoString(const time_t *);
