@@ -3,6 +3,7 @@
 
 char location[] = "/dev/tty";
 char MAPDEVICE[] = "USB0";
+char *Option82 = "disable";
 char vlan_mode[32] = {0};
 char MainBuffer[32];
 int Runtimes = 0, Autotest = 0;
@@ -104,10 +105,12 @@ void ThreadCmcControl()
 	struct termios options,oldtio; //Notice that struct "termios" NOT termio 
 	char buf[255];
 	char *w_buf = "configure terminal\n";
-	char w_o_buf[255] = {0};
+	char w_o_buf[64] = {0};
+	char Option82_w_buf[64] = {0};
 
 	//clear w_o_buf to zero
 	memset(w_o_buf, 0, sizeof(w_o_buf));
+	memset(Option82_w_buf, 0, sizeof(Option82_w_buf));
 
 	fd = open(location, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if( fd < 0 )
@@ -172,6 +175,8 @@ void ThreadCmcControl()
 	{
 		printf("test for enter mode(DVGM/SVGM):\n");
 		scanf("%s", &vlan_mode);
+		//printf("test for option82(enable/disable):\n");
+		//scanf("%s", &Option82);
 	}
 	
 	sleep(1);
@@ -183,6 +188,12 @@ void ThreadCmcControl()
 	else if(!strcmp(vlan_mode, "SVGM"))
 		sprintf(w_o_buf, "vlan rule enable\n");
 	
+	if(!strcmp(Option82, "enable"))
+		sprintf(Option82_w_buf, "option82 enable\n");
+	else if(!strcmp(Option82, "disable"))
+		sprintf(Option82_w_buf, "option82 disable\n");
+
+
 	int runtimes = 0;
 	
 	while(STOP == FALSE)
@@ -212,10 +223,12 @@ void ThreadCmcControl()
 		if(strstr(buf, "Controller-cfg#"))
 		{
 			write(fd, w_o_buf, sizeof(w_o_buf));
+			sleep(1);
+			write(fd, Option82_w_buf, sizeof(Option82_w_buf));
 		}
 		sleep(2);
 		runtimes++;
-		if(runtimes > 4)
+		if(runtimes > 3)
 		{
 			printf("Enter in %s mode\n", vlan_mode);
 			printf("set mode ok\n");
@@ -343,7 +356,10 @@ void ThreadSocket()
 				buffer[2] = (Runtimes) & 0xff;
 				buffer[3] = (StartVID >> 8) & 0xff;
 				buffer[4] = (StartVID) & 0xff;
-				buffer[5] = 0x01;
+				if(Option82 == "enable")
+					buffer[5] = 0x01;
+				else if(Option82 == "disable")
+					buffer[5] = 0x02;
 
 				//sending to client message
 				
@@ -436,9 +452,20 @@ void SocketMenu()
 	printf("***************************************\n");
 }
 
+
 void SetSendClientValue(int *mode)
 {
+	char Option82_cmd;
+
 	printf("Set Value Sending to client for auto test:\n");
+	printf("Set Option82 (Y/N) [N]\n");
+	scanf("%c",&Option82_cmd);
+	if(Option82_cmd == 'Y' || Option82_cmd == 'y')
+		Option82 = "enable";
+	else if(Option82_cmd == 'N' || Option82_cmd == 'n')
+		Option82 = "disable";
+	else
+		Option82 = "default";
 	printf("Enter Test Mode (DVGM/SVGM): \n");
 	
 	do{

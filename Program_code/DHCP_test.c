@@ -145,7 +145,7 @@ void ThreadClientSocket()
 			GetTimesValue = (client_buffer[1] & 0xff) << 8 | client_buffer[2] & 0xff;
 			GetStartVID = (client_buffer[3] & 0xff) << 8 | client_buffer[4] & 0xff;
 			
-			if((client_buffer[0] != 0) && (client_buffer[5] == 0x01))
+			if((client_buffer[0] != 0) && (client_buffer[5] != 0))
 			{
 				AutoTesting = 1;
 
@@ -187,6 +187,11 @@ void ThreadClientSocket()
 					testmode = '1';
 				else if(client_buffer[0] == 2)
 					testmode = '2';
+				
+				if(client_buffer[5] == 1)
+					Option82 = "enable";
+				else if(client_buffer[5] == 2)
+					Option82 = "disable";
 
 				Option_ReceiveAndRunning(0, testmode);
 
@@ -423,8 +428,10 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 							content[304], content[305], content[306]);
 		
 			printf("802.1Q Virtual LAN ID : %u\n",LAN_docsis_TPID);
-
+			if(Option82 == "disable")
+			{
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+			}
 		}
 		else if(ChangeMode == "SVGM")
 		{
@@ -440,8 +447,11 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 
 			printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_docsis_TPID,WAN_TPID);
 			
+			if(Option82 == "disable")
+			{
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
-		}
+			}
+		}	
 	  }//DHCPBufMode == "docsis"
 	  else if(DHCPBufMode == "pktc")
 	  {
@@ -464,7 +474,10 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		
 			printf("802.1Q Virtual LAN ID : %u\n", LAN_pktc_TPID);
 	  	
+			if(Option82 == "disable")
+			{
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
+			}
 		}
 		else if(ChangeMode == "SVGM")
 		{
@@ -478,7 +491,10 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		
 			printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_pktc_TPID,WAN_TPID);
 	  	
+			if(Option82 == "disable")
+			{
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header)), length - sizeof(eth_header));
+			}
 		}
 	  } //if DHCPBufMode == "pktc" 
 			if(Option82 == "enable")
@@ -662,7 +678,6 @@ void dump_DHCP_ip(ip_header *ipv4, int length)
 			printf("***************** Compare Data **********************************\n");
 			printf(" '%s' Compare data --------> %s\n", DHCPBufMode, !compare_num ? "true" : "false");
 			printf("*****************************************************************\n");
-			
 			/*Clear ReceiveBuf to zero*/
 			memset(SBr.ReceiveBuf, 0, length);
 			
@@ -1295,9 +1310,9 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 		printf("**************************************************\n");
 		printf("--------LAN  ==> ==> ==> ==> ==> ==>   WAN--------\n");
 		printf("................... Discover .....................\n");
-		printf("Discover -> Compare Send packet and Receive packet\n");
 		if(Option82 == "disable")
 		{
+			printf("Discover -> Compare Send packet and Receive packet\n");
 			printf("False : %d\n", CompareFalseTimes);
 			printf("True  : %d\n", CompareTrueTimes);
 			printf("Discover -> Not arrive receive Port packet\n");
@@ -1305,8 +1320,9 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 		}
 		else if(Option82 == "enable")
 		{
-			printf("False : %d\n", CompareFalseTimes_Option82);
-			printf("True  : %d\n", CompareTrueTimes_Option82);
+			printf("Option82 Discover -> Compare Send packet and Receive packet\n");
+			printf("VID False : %d\n", CompareFalseTimes_Option82);
+			printf("VID True  : %d\n", CompareTrueTimes_Option82);
 			printf("Option82 Discover -> Not arrive receive Port packet\n");
 			printf("Lose Packet : %d\n", docsis_sendtimes - ReceiveDOCSISpkt_Option82);
 		}
@@ -1371,12 +1387,15 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 		CompareFalseTimes_arp = 0;
 		CompareTrueTimes_tftp = 0;
 		CompareFalseTimes_tftp = 0;
+		CompareTrueTimes_Option82 = 0;
+		CompareFalseTimes_Option82 = 0;
 
 		//Init Lose packet record count
 		ReceiveDOCSISpkt = 0;
 		ReceiveOFFERpkt = 0;
 		ReceiveARPpkt = 0;
 		ReceiveTFTPpkt = 0;
+		ReceiveDOCSISpkt_Option82 = 0;
 
 		KeepRunning = 0;
 		Running_Times = 0;
