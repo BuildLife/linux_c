@@ -242,7 +242,8 @@ void Menu(char *mode)
 	{
 		if(AutoTesting == 0)
 		{
-			printf("Option82 (Y/N) [N]:\n");
+			printf("Code Compares VID -> default : %d, docsis : %d, pktc : %d\n",default_vid, docsis_vid, pktc_vid);
+			printf("Option82 (Y/N) [N] :\n");
 			scanf("%c");
 			cmd_buf = getchar();
 
@@ -418,11 +419,9 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  	if(ChangeMode == "DVGM")
 		{
 			printf("Option 60 class : %c%c%c%c%c%c%c%c%c                |   %c%c%c%c%c%c%c%c%c\n",
-							DHCPdocsisBuf[302], DHCPdocsisBuf[303],
-							DHCPdocsisBuf[304], DHCPdocsisBuf[305],
-							DHCPdocsisBuf[306], DHCPdocsisBuf[307],
-							DHCPdocsisBuf[308], DHCPdocsisBuf[309],
-							DHCPdocsisBuf[310],
+							DHCPdocsisBuf[302], DHCPdocsisBuf[303], DHCPdocsisBuf[304], 
+							DHCPdocsisBuf[305], DHCPdocsisBuf[306], DHCPdocsisBuf[307],
+							DHCPdocsisBuf[308], DHCPdocsisBuf[309], DHCPdocsisBuf[310],
 							content[298], content[299], content[300],
 							content[301], content[302], content[303],
 							content[304], content[305], content[306]);
@@ -436,11 +435,9 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		else if(ChangeMode == "SVGM")
 		{
 			printf("Option 60 class : %c%c%c%c%c%c%c%c%c                |   %c%c%c%c%c%c%c%c%c\n",
-							DHCPdocsisBuf[302], DHCPdocsisBuf[303],
-							DHCPdocsisBuf[304], DHCPdocsisBuf[305],
-							DHCPdocsisBuf[306], DHCPdocsisBuf[307],
-							DHCPdocsisBuf[308], DHCPdocsisBuf[309],
-							DHCPdocsisBuf[310],
+							DHCPdocsisBuf[302], DHCPdocsisBuf[303], DHCPdocsisBuf[304], 
+							DHCPdocsisBuf[305], DHCPdocsisBuf[306], DHCPdocsisBuf[307],
+							DHCPdocsisBuf[308], DHCPdocsisBuf[309], DHCPdocsisBuf[310],
 							content[302], content[303], content[304],
 							content[305], content[306], content[307],
 							content[308], content[309], content[310]);
@@ -465,15 +462,14 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  	if(ChangeMode == "DVGM")
 		{
 			printf("Option 60 class : %c%c%c%c%c%c%c                  |   %c%c%c%c%c%c%c\n",
-							DHCPpktcBuf[302], DHCPpktcBuf[303],
-							DHCPpktcBuf[304], DHCPpktcBuf[305],
-							DHCPpktcBuf[306], DHCPpktcBuf[307],
+							DHCPpktcBuf[302], DHCPpktcBuf[303], DHCPpktcBuf[304], 
+							DHCPpktcBuf[305], DHCPpktcBuf[306], DHCPpktcBuf[307],
 							DHCPpktcBuf[308],
 							content[298], content[299], content[300],
 							content[301], content[302], content[303], content[304]);
 		
 			printf("802.1Q Virtual LAN ID : %u\n", LAN_pktc_TPID);
-	  	
+			
 			if(Option82 == "disable")
 			{
 			dump_DHCP_ip((ip_header*)(content + sizeof(eth_header) - 4), length - sizeof(eth_header) - 4);
@@ -482,9 +478,8 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		else if(ChangeMode == "SVGM")
 		{
 			printf("Option 60 class : %c%c%c%c%c%c%c                  |   %c%c%c%c%c%c%c\n",
-							DHCPpktcBuf[302], DHCPpktcBuf[303],
-							DHCPpktcBuf[304], DHCPpktcBuf[305],
-							DHCPpktcBuf[306], DHCPpktcBuf[307],
+							DHCPpktcBuf[302], DHCPpktcBuf[303], DHCPpktcBuf[304], 
+							DHCPpktcBuf[305], DHCPpktcBuf[306], DHCPpktcBuf[307],
 							DHCPpktcBuf[308],
 							content[302], content[303], content[304],
 							content[305], content[306], content[307], content[308]);
@@ -499,8 +494,8 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  } //if DHCPBufMode == "pktc" 
 			if(Option82 == "enable")
 			{
-			/*Option82 Function*/
-			CompareFalseTimes_Option82 = Option82_Compare(DHCPBufMode, Docsis_sidMAC[ReceiveTimes++][1], WAN_ethhdr -> smac, WAN_TPID, &CompareTrueTimes_Option82, 6);
+				/*Option82 Function*/
+				CompareFalseTimes_Option82 = Option82_Compare(DHCPBufMode, Docsis_sidMAC[ReceiveTimes++][1], WAN_ethhdr -> smac, WAN_TPID, &CompareTrueTimes_Option82, (char*)(content + length - OPTION82_LENGTH), OPTION82_LENGTH);
 			}
 	}//if PacketMode == "DHCP"
 	else if(PacketMode == "ARP")
@@ -514,16 +509,12 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  if(ChangeMode == "DVGM")
 	  {
 		printf("Sender IP      	: %d.%d.%d.%d           |   %d.%d.%d.%d\n",
-							ArpPacket[32]&0xff, ArpPacket[33]&0xff, 
-							ArpPacket[34]&0xff, ArpPacket[35]&0xff, 
-							content[28]%0xff, content[29]%0xff, 
-							content[30]%0xff, content[31]%0xff);
+							ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, 
+							content[28]%0xff, content[29]%0xff, content[30]%0xff, content[31]%0xff);
 		
 		printf("Tender IP      	: %d.%d.%d.%d             |   %d.%d.%d.%d\n",
-							ArpPacket[42]&0xff, ArpPacket[43]&0xff, 
-							ArpPacket[44]&0xff, ArpPacket[45]&0xff, 
-							content[38]&0xff, content[39]&0xff, 
-							content[40]&0xff, content[41]&0xff);
+							ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, 
+							content[38]&0xff, content[39]&0xff, content[40]&0xff, content[41]&0xff);
 		
 		printf("802.1Q Virtual LAN ID : %u\n", LAN_arp_TPID);
 		
@@ -532,16 +523,12 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 	  else if(ChangeMode == "SVGM")
 	  {
 		printf("Sender IP      	: %u.%u.%u.%u           |   %u.%u.%u.%u\n",
-							ArpPacket[32]&0xff, ArpPacket[33]&0xff, 
-							ArpPacket[34]&0xff, ArpPacket[35]&0xff, 
-							content[32]&0xff, content[33]&0xff, 
-							content[34]&0xff, content[35]&0xff);
+							ArpPacket[32]&0xff, ArpPacket[33]&0xff, ArpPacket[34]&0xff, ArpPacket[35]&0xff, 
+							content[32]&0xff, content[33]&0xff, content[34]&0xff, content[35]&0xff);
 		
 		printf("Tender IP      	: %u.%u.%u.%u             |   %u.%u.%u.%u\n",
-							ArpPacket[42]&0xff, ArpPacket[43]&0xff, 
-							ArpPacket[44]&0xff, ArpPacket[45]&0xff, 
-							content[42]&0xff, content[43]&0xff, 
-							content[44]&0xff, content[45]&0xff);
+							ArpPacket[42]&0xff, ArpPacket[43]&0xff, ArpPacket[44]&0xff, ArpPacket[45]&0xff, 
+							content[42]&0xff, content[43]&0xff, content[44]&0xff, content[45]&0xff);
 		
 		printf("802.1Q Virtual LAN ID : %u               |   %u\n",LAN_arp_TPID, WAN_TPID);
 		
@@ -559,9 +546,8 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		
 			printf("Source      	: %17s        |   %17s\n",LAN_tftpdocsis_srcmac, WAN_srcmac);
 			printf("Ask Files Name  : %c%c%c%c%c%c%c%c		   |   %c%c%c%c%c%c%c\n", 
-								tftpPacket_docsis[48], tftpPacket_docsis[49],
-								tftpPacket_docsis[50], tftpPacket_docsis[51], 
-								tftpPacket_docsis[52], tftpPacket_docsis[53],
+								tftpPacket_docsis[48], tftpPacket_docsis[49], tftpPacket_docsis[50], 
+								tftpPacket_docsis[51], tftpPacket_docsis[52], tftpPacket_docsis[53],
 								tftpPacket_docsis[54], tftpPacket_docsis[55], 
 								content[44], content[45], content[46], content[47], 
 								content[48], content[49], content[50], content[51]);
@@ -572,14 +558,11 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 			printf("Source      	: %17s        |   %17s\n",LAN_tftpemta_srcmac, WAN_srcmac);
 		
 			printf("Ask Files Name  : %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c	   |	  %c%c%c%c%c%c%c%c%c%c%c%c%c%c\n", 
-								tftpPacket_emta[48], tftpPacket_emta[49],
-								tftpPacket_emta[50], tftpPacket_emta[51], 
-								tftpPacket_emta[52], tftpPacket_emta[53],
-								tftpPacket_emta[54], tftpPacket_emta[55], 
-								tftpPacket_emta[56], tftpPacket_emta[57], 
-								tftpPacket_emta[58], tftpPacket_emta[59], 
-								tftpPacket_emta[60], tftpPacket_emta[61], 
-								tftpPacket_emta[62], 
+								tftpPacket_emta[48], tftpPacket_emta[49], tftpPacket_emta[50], 
+								tftpPacket_emta[51], tftpPacket_emta[52], tftpPacket_emta[53],
+								tftpPacket_emta[54], tftpPacket_emta[55], tftpPacket_emta[56], 
+								tftpPacket_emta[57], tftpPacket_emta[58], tftpPacket_emta[59], 
+								tftpPacket_emta[60], tftpPacket_emta[61], tftpPacket_emta[62], 
 								content[44], content[45], content[46], content[47], 
 								content[48], content[49], content[50], content[51],
 								content[52], content[53], content[54], content[55],
@@ -597,9 +580,8 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 			printf("Source      	: %17s        |   %17s\n",LAN_tftpdocsis_srcmac, WAN_srcmac);
 		
 			printf("Ask Files Name  : %c%c%c%c%c%c%c%c		   |   %c%c%c%c%c%c%c\n", 
-								tftpPacket_docsis[48], tftpPacket_docsis[49],
-								tftpPacket_docsis[50], tftpPacket_docsis[51], 
-								tftpPacket_docsis[52], tftpPacket_docsis[53],
+								tftpPacket_docsis[48], tftpPacket_docsis[49], tftpPacket_docsis[50], 
+								tftpPacket_docsis[51], tftpPacket_docsis[52], tftpPacket_docsis[53],
 								tftpPacket_docsis[54], tftpPacket_docsis[55], 
 								content[48], content[49], content[50], content[51], 
 								content[52], content[53], content[54], content[55]);
@@ -610,14 +592,11 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 			printf("Source      	: %17s        |   %17s\n",LAN_tftpemta_srcmac, WAN_srcmac);
 		
 			printf("Ask Files Name  : %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c	   |   %c%c%c%c%c%c%c%c%c%c%c%c%c%c\n", 
-								tftpPacket_emta[48], tftpPacket_emta[49],
-								tftpPacket_emta[50], tftpPacket_emta[51], 
-								tftpPacket_emta[52], tftpPacket_emta[53],
-								tftpPacket_emta[54], tftpPacket_emta[55], 
-								tftpPacket_emta[56], tftpPacket_emta[57], 
-								tftpPacket_emta[58], tftpPacket_emta[59], 
-								tftpPacket_emta[60], tftpPacket_emta[61], 
-								tftpPacket_emta[62], 
+								tftpPacket_emta[48], tftpPacket_emta[49], tftpPacket_emta[50], 
+								tftpPacket_emta[51], tftpPacket_emta[52], tftpPacket_emta[53],
+								tftpPacket_emta[54], tftpPacket_emta[55], tftpPacket_emta[56], 
+								tftpPacket_emta[57], tftpPacket_emta[58], tftpPacket_emta[59], 
+								tftpPacket_emta[60], tftpPacket_emta[61], tftpPacket_emta[62], 
 								content[48], content[49], content[50], content[51], 
 								content[52], content[53], content[54], content[55],
 								content[56], content[57], content[58], content[59],
@@ -839,17 +818,23 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 	pktc_vid = 30; */
 /*Option 82 compare*/
 int false_times = 0;
-int Option82_Compare(char *DHCPmode, int numbers, char MAC[], unsigned int VID, int *Compares, unsigned int length)
+int Option82_Compare(char *DHCPmode, int numbers, char MAC[], unsigned int VID, int *Compares, char *Option82_content, unsigned int Option82_content_length)
 {
 	
 	ReceiveDOCSISpkt_Option82++;
+	
+	printf("******************* Option 82 Information *********************\n");
+	printf("Circuit ID : %c%c%c%c%c%c%c\n", Option82_content[4], Option82_content[5], Option82_content[6], Option82_content[7], Option82_content[8], Option82_content[9]);
+	printf("Remote ID : %02x:%02x:%02x:%02x:%02x:%02x\n", Option82_content[12], Option82_content[13], Option82_content[14], Option82_content[15], Option82_content[16], Option82_content[17]);
+	printf("***************************************************************\n");
+	
 	int i = 0, j = 0;
 	char item_docsis[6] = {0};
 	char item_pktc[6] = {0};
 	
 	if(DHCPmode == "docsis")
 	{
-		memcpy(item_docsis, (*Docsis_sidMAC + numbers) + 4, length);
+		memcpy(item_docsis, (*Docsis_sidMAC + numbers) + 4, sizeof(MAC));
 		if(!strcmp(item_docsis, MAC))
 		{
 			if(VID != docsis_vid)
@@ -861,7 +846,7 @@ int Option82_Compare(char *DHCPmode, int numbers, char MAC[], unsigned int VID, 
 	}
 	else if(DHCPmode == "pktc")
 	{
-		memcpy(item_pktc, (*Pktc_sidMAC + numbers) + 4, length);
+		memcpy(item_pktc, (*Pktc_sidMAC + numbers) + 4, sizeof(MAC));
 		if(!strcmp(item_pktc, MAC))
 		{
 			if(VID != pktc_vid)
@@ -1307,7 +1292,7 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 			}
 		}
 
-		printf("**************************************************\n");
+		printf("*************** Current Mode : %s ****************\n", ChangeMode);
 		printf("--------LAN  ==> ==> ==> ==> ==> ==>   WAN--------\n");
 		printf("................... Discover .....................\n");
 		if(Option82 == "disable")
@@ -1804,8 +1789,11 @@ int InsertMACTable(char *DhcpBufMode, char *MAC)
 	{
 		strcpy(*(Docsis_sidMAC + items) + 0, &def_sid_title);
 		strcpy(*(Docsis_sidMAC + items) + 1, &def_sid_number);
+		
+		//add packet vid
 		strcpy(*(Docsis_sidMAC + items) + 2, &DHCPdocsisBuf[14]);
 		strcpy(*(Docsis_sidMAC + items) + 3, &DHCPdocsisBuf[15]);
+
 		memcpy(*(Docsis_sidMAC + items) + 4, MAC, 6);
 		flag = 0;
 	}
@@ -1813,8 +1801,11 @@ int InsertMACTable(char *DhcpBufMode, char *MAC)
 	{
 		strcpy(*(Pktc_sidMAC + items) + 0, &def_sid_title);
 		strcpy(*(Pktc_sidMAC + items) + 1, &def_sid_number);
+		
+		//add packet vid
 		strcpy(*(Pktc_sidMAC + items) + 2, &DHCPpktcBuf[14]);
 		strcpy(*(Pktc_sidMAC + items) + 3, &DHCPpktcBuf[15]);
+		
 		memcpy(*(Pktc_sidMAC + items) + 4, MAC, 6);
 		flag = 1;
 	}

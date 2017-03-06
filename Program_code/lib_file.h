@@ -52,6 +52,8 @@
 #include <time.h>
 
 #define MAC_ADDRSTRLEN 2*6+5+1
+#define OPTION82_LENGTH 19
+
 
 /*For Comport to control*/
 #define BAUDRATE B38400
@@ -59,6 +61,8 @@
 
 #define FALSE 0
 #define TRUE 1
+
+
 
 
 typedef struct S_ETH_HEADER
@@ -498,7 +502,7 @@ void dump_ARP_ip(arp_header*, int);
 
 void dump_TFTP_ip(ip_header*, int);
 
-int Option82_Compare(char*, int, char[], unsigned int, int *, unsigned int);
+int Option82_Compare(char*, int, char[], unsigned int, int *, char *, unsigned int);
 
 void pcap_handler_func(unsigned char*, const struct pcap_pkthdr*, const unsigned char *);
 

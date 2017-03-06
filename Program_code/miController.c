@@ -171,12 +171,18 @@ void ThreadCmcControl()
 	// Enable the new setting right now
 	tcsetattr(fd, TCSANOW, &options);
 	
+	char cmd_buf;
 	if(!strcmp(MainBuffer, "USB\n\0") || !strcmp(MainBuffer, "usb\n\0"))
 	{
 		printf("test for enter mode(DVGM/SVGM):\n");
 		scanf("%s", &vlan_mode);
-		//printf("test for option82(enable/disable):\n");
-		//scanf("%s", &Option82);
+		printf("test for option82(enable/disable):\n");
+		scanf("%c");
+		cmd_buf = getchar();
+		if(cmd_buf == 'Y' || cmd_buf == 'y')
+			Option82 = "enable";
+		else if(cmd_buf == 'N' || cmd_buf == 'n')
+			Option82 = "disable";
 	}
 	
 	sleep(1);
