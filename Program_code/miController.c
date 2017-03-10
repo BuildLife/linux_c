@@ -33,12 +33,6 @@ void StopSignal()
 	STOP = TRUE;	
 }
 
-/*void SignalAlarm(int sigo)
-{
-	
-}
-*/
-
 /*Use in socket server running*/
 pthread_t pthreadSocketServerRunning;
 
@@ -176,7 +170,7 @@ void ThreadCmcControl()
 	{
 		printf("test for enter mode(DVGM/SVGM):\n");
 		scanf("%s", &vlan_mode);
-		printf("test for option82(enable/disable):\n");
+		printf("test for option82(Y/N)[N]:\n");
 		scanf("%c");
 		cmd_buf = getchar();
 		if(cmd_buf == 'Y' || cmd_buf == 'y')
@@ -471,7 +465,8 @@ void SetSendClientValue(int *mode)
 	else if(Option82_cmd == 'N' || Option82_cmd == 'n')
 		Option82 = "disable";
 	else
-		Option82 = "default";
+		Option82 = "disable";
+
 	printf("Enter Test Mode (DVGM/SVGM): \n");
 	
 	do{

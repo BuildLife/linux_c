@@ -52,7 +52,7 @@
 #include <time.h>
 
 #define MAC_ADDRSTRLEN 2*6+5+1
-#define OPTION82_LENGTH 19
+#define OPTION82_LENGTH 18
 
 
 /*For Comport to control*/
@@ -429,8 +429,8 @@ char tftpPacket_emta[] = {
 
 typedef enum{
 	default_vid = 10,
-	docsis_vid = 20,
-	pktc_vid = 30,
+	docsis_vid = 1000,
+	pktc_vid = 2000,
 }svgm_vid_table;
 
 
@@ -496,13 +496,13 @@ char *MacaddrtoString(unsigned char *);
 
 void VGM_MODE(u_int32_t , const u_int8_t*);
 
-void dump_DHCP_ip(ip_header*, int);
+void dump_DHCP_ip(ip_header*, int, char [], unsigned int );
 
 void dump_ARP_ip(arp_header*, int);
 
 void dump_TFTP_ip(ip_header*, int);
 
-int Option82_Compare(char*, int, char[], unsigned int, int *, char *, unsigned int);
+int Option82_Compare(char*, char[], unsigned int, int *, char *, unsigned int);
 
 void pcap_handler_func(unsigned char*, const struct pcap_pkthdr*, const unsigned char *);
 
