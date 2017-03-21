@@ -404,29 +404,21 @@ void VGM_MODE(u_int32_t length, const u_int8_t *content)
 		
 		if(ChangeMode == "DVGM")
 		{
+			DumpIP_buffer = (ip_header*)(content + sizeof(eth_header) - 4);
+
 			if(Option82 == "enable")
-			{
-				DumpIP_buffer = (ip_header*)(content + sizeof(eth_header) - 4);
 				DumpIP_length = length - sizeof(eth_header) - OPTION82_LENGTH + 3; 
-			}
 			else if(Option82 == "disable")
-			{
-				DumpIP_buffer = (ip_header*)(content + sizeof(eth_header) - 4);
 				DumpIP_length = length - sizeof(eth_header) + 4; 
-			}
 		}
 		else if(ChangeMode == "SVGM")
 		{
+			DumpIP_buffer = (ip_header*)(content + sizeof(eth_header));
+
 			if(Option82 == "enable")
-			{
-				DumpIP_buffer = (ip_header*)(content + sizeof(eth_header));
 				DumpIP_length = length - sizeof(eth_header) - OPTION82_LENGTH - 1; 
-			}
 			else if(Option82 == "disable")
-			{	
-				DumpIP_buffer = (ip_header*)(content + sizeof(eth_header));
 				DumpIP_length = length - sizeof(eth_header); 
-			}
 		}
 
 	  if(DHCPBufMode == "docsis")
@@ -837,12 +829,10 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 
 /*  In lib_file.h defined struct default_vid = 10; docsis_vid = 20; pktc_vid = 30; 
 	that be compare vid when receive buffer(docsis/pktc) of SVGM Mode. 
-	If needed to compare right vid. Have to change the values in lib_file.h*/
-/*Option 82 compare*/
+	If needed to compare right vid. Have to change the values in lib_file.h */
 int false_times = 0;
 int ReceiveTimes = 0;
 int o_flag = 0;
-
 int Option82_Compare(char *DHCPmode, char MAC[], unsigned int VID, int *Compares, char *Option82_content, unsigned int Option82_content_length)
 {
 	
@@ -1215,6 +1205,10 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 				}
 				else
 				{
+					SBr.SendBuf_arp[11] = 0x11;
+					ArpPacket[9] = 0x11;
+					ArpPacket[29] = 0x11;
+					ArpPacket[35] = 0x20;
 					docsis_sendtimes++;
 					PacketMode = "DHCP";
 					if(Option82 == "enable")
@@ -1232,9 +1226,6 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 				}
 				else
 				{
-					SBr.SendBuf_arp[11] = 0x11;
-					ArpPacket[9] = 0x11;
-					ArpPacket[29] = 0x11;
 					arp_sendtimes++;
 					PacketMode = "ARP";
 				}
@@ -1280,6 +1271,10 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 				}
 				else
 				{
+					SBr.SendBuf_arp[11] = 0x22;
+					ArpPacket[9] = 0x22;
+					ArpPacket[29] = 0x22;
+					ArpPacket[35] = 0x84;
 					docsis_sendtimes++;
 					PacketMode = "DHCP";
 					if(Option82 == "enable")
@@ -1297,9 +1292,6 @@ void Option_ReceiveAndRunning(int D_times, char sop)
 				}
 				else
 				{
-					SBr.SendBuf_arp[11] = 0x22;
-					ArpPacket[9] = 0x22;
-					ArpPacket[29] = 0x22;
 					arp_sendtimes++;
 					PacketMode = "ARP";
 				}
