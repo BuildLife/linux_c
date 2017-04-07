@@ -830,12 +830,13 @@ void dump_TFTP_ip(ip_header *tftp_ipv4, int length)
 /*  In lib_file.h defined struct default_vid = 10; docsis_vid = 20; pktc_vid = 30; 
 	that be compare vid when receive buffer(docsis/pktc) of SVGM Mode. 
 	If needed to compare right vid. Have to change the values in lib_file.h */
-int false_times = 0;
-int ReceiveTimes = 0;
-int o_flag = 0;
 int Option82_Compare(char *DHCPmode, char MAC[], unsigned int VID, int *Compares, char *Option82_content, unsigned int Option82_content_length)
 {
 	
+	static int false_times;
+	static int ReceiveTimes;
+	static int o_flag;
+
 	ReceiveDOCSISpkt_Option82++;
 
 	printf("******************* Option 82 Information *********************\n");
@@ -1774,12 +1775,12 @@ void GetEthMACaddress(char eth_port[])
 	tftpPacket_emta[5] = mac[5];
 }
 
-int items = 0;
-int flag = 0;
-int def_sid_number = 0;
-char def_sid_title  = 'A';
 int InsertMACTable(char *DhcpBufMode, char *MAC)
 {
+	static int def_sid_number;
+	static char def_sid_title = 'A';
+	static int flag = 0;
+	static int items = 0;
 	int docsis_vid = 0;
 	int pktc_vid = 0;
 	/*
