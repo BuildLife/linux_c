@@ -6,11 +6,11 @@ char MAPDEVICE[] = "USB0";
 char *Option82 = "disable";
 char vlan_mode[32] = {0};
 char MainBuffer[32];
-int Runtimes = 0, Autotest = 0;
-int StartVID = 0;
+static int Runtimes = 0, Autotest = 0;
+static int StartVID = 0;
 
 /*Use in Start open socket command*/
-int OpenSocketFlag = 0;
+static int OpenSocketFlag = 0;
 
 
 /*Define use function*/
@@ -21,8 +21,8 @@ void SocketMenu();
 void SetSendClientValue(int *);
 
 /*Use in socket server*/
-int sockfd;
-int clientfd;
+static int sockfd;
+static int clientfd;
 struct sockaddr_in server_addr;
 struct sockaddr_in client_addr;
 

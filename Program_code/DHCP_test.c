@@ -45,11 +45,11 @@ unsigned int CompareFalseTimes_tftp = 0, CompareTrueTimes_tftp = 0;
 unsigned int CompareFalseTimes_Option82 = 0, CompareTrueTimes_Option82 = 0;
 
 /* Socket Server for Auto testing flag ->  1 : open auto ; 0 : close auto */
-int AutoTesting = 0;
+static int AutoTesting = 0;
 
 /*Record Lose packet*/
-int ReceiveDOCSISpkt = 0, ReceiveOFFERpkt = 0, ReceiveARPpkt = 0, ReceiveTFTPpkt = 0;
-int ReceiveDOCSISpkt_Option82 = 0;
+static int ReceiveDOCSISpkt = 0, ReceiveOFFERpkt = 0, ReceiveARPpkt = 0, ReceiveTFTPpkt = 0;
+static int ReceiveDOCSISpkt_Option82 = 0;
 
 /*Pthread lock*/
 pthread_mutex_t pcap_send_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -62,7 +62,7 @@ char *PacketMode = "default";
 char *Option82 = "disable";
 
 
-int StopLoopRunning = 0;
+static int StopLoopRunning = 0;
 
 /*Ctrl+c change the values for stop read/send while*/
 void Signal_Stophandler()
@@ -1774,6 +1774,7 @@ void GetEthMACaddress(char eth_port[])
 	tftpPacket_emta[4] = mac[4];
 	tftpPacket_emta[5] = mac[5];
 }
+
 
 int InsertMACTable(char *DhcpBufMode, char *MAC)
 {
