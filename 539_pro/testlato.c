@@ -17,9 +17,7 @@ int game_of_function(int game_num)
 	int game_s = 0;
 	int i = 0;
 
-	printf("1\n");
 	gets_arr = (int *)malloc(10 * sizeof(int));
-	printf("2\n");
 	if(game_num == 1)
 	{
 		game_s = 5;
@@ -30,6 +28,8 @@ int game_of_function(int game_num)
 		game_s = 6;
 		lato_f(gets_arr,game_s);
 	}
+	else 
+		exit(1);
 
 
 	printf("Game is %s\n",game_s == 5 ? "539" : "Lato");
@@ -46,26 +46,60 @@ int game_of_function(int game_num)
 
 int lato_f(int *gets,int s)
 {	
-	int x = 0;
+	int x = 0, y = 0;
+	int ball_num = 0;
+	int avoid_num[6] = {0};
 	srand(time(NULL));
 	for(x = 0;x<s-1;x++)
 	{
-		*(gets + x) = (rand()%NELEMS(lato_hot_ball));
+		avoid_num[x] = lato_hot_ball[ball_num];
+		ball_num = (rand()%NELEMS(lato_hot_ball));
+		
+		while(y <= x)
+		{
+			if(avoid_num[y] == lato_hot_ball[ball_num])
+			{
+				ball_num = (rand()%NELEMS(lato_hot_ball));
+				y = 0;
+			}
+			y++;
+		}	
+
+		*(gets + x) = lato_hot_ball[ball_num];
+		y = 0;
 	}
-		*(gets + (s - 1)) = (rand()%NELEMS(lato_cold_ball));
+		ball_num = rand()%NELEMS(lato_cold_ball);
+		*(gets + (s - 1)) = lato_cold_ball[ball_num];
 	return 0;
 }
 
 int f_539(int *gets,int s)
 {
 
-	int x = 0;
+	int x = 0, y = 0;
+	int ball_num = 0;
+	int avoid_num[5] = {0};
 	srand(time(NULL));
 	for(x = 0;x<s-1;x++)
 	{
-		*(gets + x) = (rand()%NELEMS(g539_hot_ball) + 1);
+		avoid_num[x] = g539_hot_ball[ball_num];
+		ball_num = rand()%NELEMS(g539_hot_ball);
+		
+		while(y <= x)
+		{
+			if(avoid_num[y] == g539_hot_ball[ball_num])
+			{
+				ball_num = (rand()%NELEMS(g539_hot_ball));
+				y = 0;
+			}
+			y++;
+		}	
+		
+		*(gets + x) = g539_hot_ball[ball_num];
+		y = 0;
 	}
-		*(gets + (s - 1)) = (rand()%NELEMS(g539_cold_ball) + 1);
+		ball_num = rand()%NELEMS(g539_cold_ball);
+		*(gets + (s - 1)) = g539_cold_ball[ball_num];
 	return 0;
 }
 
@@ -80,6 +114,7 @@ int main()
 		printf("Options of Games:\n");
 		printf("1. 539\n");
 		printf("2. lato\n");
+		printf("3. exit\n");
 		scanf("%d",&ch_t);
 		game_of_function(ch_t);
 	}
