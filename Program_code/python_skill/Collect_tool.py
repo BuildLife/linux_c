@@ -12,24 +12,24 @@ import time
 username='root'
 password='admin'
 tftp_folder='/var/lib/tftpboot'
-controller_folder="/home/eric/cmc_codebase/cmc_mgt/boards/rtl819xD/image/"
+controller_folder='/home/eric/cmc_codebase/cmc_mgt/boards/rtl819xD/image/'
 
 up_file=' '
+getname='test'
 
 def cp_upfile():
-	subprocess.call('ls ' + controller_folder +'CMCMGT-fw-* ', shell=True)
-	get_filename = commands.getstatusoutput('ls ' + controller_folder +'CMCMGT-fw-* ')
-	#print "file time is ", time.ctime(os.path.getmtime(controller_folder +'CMCMGT-fw-0.1.1_17_MYMAC_FPGA_SE_8.bin '))
-	print "file time is ", time.ctime(os.path.getmtime('Collect_tool.py'))
-	print get_filename
-	#subprocess.call('sudo cp '+ controller_folder +'CMCMGT-fw-* '+ tftp_folder, shell=True)
-	#get_times = subprocess.call(,shell=True)
+	#global getname
+	get_status,get_filename = commands.getstatusoutput('ls ' + controller_folder +'CMCMGT-fw-* ')
+#	print "file time is ", time.ctime(os.path.getmtime())
+	getname = get_filename.split(controller_folder)[1]
 
+	print getname
 
 def get_upfile():
-	subprocess.call('ls '+ tftp_folder, shell=True)
-	file_time = subprocess.call('ls', shell=True)
-	print file_time
+	#subprocess.call('ls '+ tftp_folder, shell=True)
+	#file_time = subprocess.call('ls', shell=True)
+	#print file_time
+	print getname
 
 
 def do_telnet(host, username, password, cmd):
