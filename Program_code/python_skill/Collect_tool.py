@@ -24,6 +24,8 @@ tftp_folder='/var/lib/tftpboot'
 controller_folder='/home/eric/cmc_codebase/cmc_mgt/boards/rtl819xD/image/'
 
 
+#efesfesfsefflwmfoiwefmiowefmowemf
+
 def cp_upfile():
 	global getfilename
 	global get_status
@@ -125,7 +127,7 @@ if __name__=='__main__':
 			changes_hostip(cmd,host_interface)
 
 		else :
-			print "Leave Program....."
+			print "Leave Program....\n"
 			exit(1)
 
 
