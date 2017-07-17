@@ -23,8 +23,7 @@ password='admin'
 tftp_folder='/var/lib/tftpboot'
 controller_folder='/home/eric/cmc_codebase/cmc_mgt/boards/rtl819xD/image/'
 
-
-#efesfesfsefflwmfoiwefmiowefmowemf
+getfilename=' '
 
 def cp_upfile():
 	global getfilename
@@ -40,34 +39,62 @@ def get_hostip(ifname):
 			0x8915, #SIOCGIFADDR 
 			struct.pack('256s', ifname[:15]))[20:24])
 
-def do_telnet(host, username, password, cmd):
+def do_telnet(host, username, password, cmd, ip):
 	tn = telnetlib.Telnet(host, port=23, timeout=10)
 	tn.set_debuglevel(2)
 
-	tn.read_util('login: ')
+	tn.read_until('login: ')
 	tn.write(username + '\n')
 	print "Login\n"
 
 	time.sleep(2)
 
-	tn.read_util('Password: ')
+	tn.read_until('Password: ')
 	tn.write(password + '\n')
 	print "Password\n"
 	print "Login Success....\n"
 
 	time.sleep(2)
 
-	tn.read_util('Controller#')
+	tn.read_until('Controller#')
 
 	if cmd == 1:
-		tn.write('Configure terminal\n')
-		tn.read_util('Controller-cfg#')
+		tn.write('configure terminal\n')
+		tn.read_until('Controller-cfg#')
 		time.sleep(2)
-		tn.write('upgrade controller firmware' + getfilename + ' ' + clientip + '\n')
+		tn.write('upgrade controller firmware' + getfilename + ' ' + ip + '\n')
 	#elif cmd == 2:
 	#else
 
+	if cmd == 2:
+		print "test"
+
+
+
+
 	tn.close();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def changes_hostip(cmd,host_inter):
 	if cmd == 1:
@@ -78,7 +105,7 @@ def changes_hostip(cmd,host_inter):
 		status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.1.5')[0]
 	elif cmd == 4:
 		o_ip = str(raw_input("\nKey in you want to change ip: "))
-		status = commands.getstatusoutput('sudo ifconfig eth14 '+o_ip)[0]
+		status = commands.getstatusoutput('sudo ifconfig '+host_inter+' '+o_ip)[0]
 	else:
 		print "No this Option, Please input the Option again.......\n"
 	
@@ -87,6 +114,9 @@ def changes_hostip(cmd,host_inter):
 	else :
 		print "Changes IP Error\n"
 
+	time.sleep(2)
+	ifconfig = commands.getstatusoutput('ifconfig')
+	print ifconfig
 
 if __name__=='__main__':
 
@@ -112,9 +142,13 @@ if __name__=='__main__':
 
 		elif opt == 2:
 			print "Telnet in CMC & Upgrade the controller\n"
-			comport = str(raw_input("\nPlease Input Host Interface: "))
+			comport = str(raw_input("\nPlease Input Host Interface(ex:eth14/eth2): "))
 			ip = get_hostip(comport)
-			do_telnet(ip, username, password, cmd)
+			host = str(raw_input("\nPlease Input CMC ip(ex:192.168.1.100): "))
+			if getfilename == ' ':
+				print "please cp file to tftpboot folder\n"
+			else:
+				do_telnet(host, username, password, 1, ip)
 	
 		elif opt == 3:
 			print "Changes an ip address.\n"
