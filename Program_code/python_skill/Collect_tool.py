@@ -26,16 +26,6 @@ controller_folder='/home/eric/cmc_codebase/cmc_mgt/boards/rtl819xD/image/'
 getfilename=' '
 
 def cp_upfile():
-
-
-
-	
-
-
-	if get == 2
-		else
-		test
-
 	global getfilename
 	global get_status
 	get_filename = commands.getstatusoutput('ls ' + controller_folder +'CMCMGT-fw-* ')[1]
@@ -76,57 +66,32 @@ def do_telnet(host, username, password, cmd, ip):
 	#elif cmd == 2:
 	#else
 
-	if cmd == 2:
-		print "test"
-
-
-
-
 	tn.close();
 
+def changes_hostip(cmd,host_inter,status):
+	if status == 1:
+		if cmd == 1:
+			ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.10.99')[0]
+		elif cmd == 2:
+			ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.100.2')[0]
+		elif cmd == 3:
+			ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.1.5')[0]
+		elif cmd == 4:
+			o_ip = str(raw_input("\nKey in you want to change ip: "))
+			ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' '+o_ip)[0]
+		else:
+			print "No this Option, Please input the Option again.......\n"
+	elif status == 0:
+		ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' down')[0]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def changes_hostip(cmd,host_inter):
-	if cmd == 1:
-		status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.10.99')[0]
-	elif cmd == 2:
-		status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.100.2')[0]
-	elif cmd == 3:
-		status = commands.getstatusoutput('sudo ifconfig '+host_inter+' 192.168.1.5')[0]
-	elif cmd == 4:
-		o_ip = str(raw_input("\nKey in you want to change ip: "))
-		status = commands.getstatusoutput('sudo ifconfig '+host_inter+' '+o_ip)[0]
-	else:
-		print "No this Option, Please input the Option again.......\n"
-	
-	if status == 0:
+	if ch_status == 0:
 		print "Changes IP Success\n"
 	else :
 		print "Changes IP Error\n"
 
 	time.sleep(2)
 	ifconfig = commands.getstatusoutput('ifconfig')
-	print ifconfig
+	print ifconfig[:3]
 
 if __name__=='__main__':
 
@@ -168,7 +133,10 @@ if __name__=='__main__':
 			print "4. Self defines an IP(XXX.XXX)\n"
 			cmd = int(raw_input("\nIP Option: "))
 			host_interface = str(raw_input("\nInterface : "))
-			changes_hostip(cmd,host_interface)
+			state = int(raw_input("\nstate (0:disable 1:enable) : "))
+			if state != 0 | state != 1:
+				return if
+			changes_hostip(cmd,host_interface,state)
 
 		else :
 			print "Leave Program....\n"
