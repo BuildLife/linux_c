@@ -26,6 +26,16 @@ controller_folder='/home/eric/cmc_codebase/cmc_mgt/boards/rtl819xD/image/'
 getfilename=' '
 
 def cp_upfile():
+
+
+
+	
+
+
+	if get == 2
+		else
+		test
+
 	global getfilename
 	global get_status
 	get_filename = commands.getstatusoutput('ls ' + controller_folder +'CMCMGT-fw-* ')[1]
