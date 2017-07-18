@@ -116,13 +116,13 @@ if __name__=='__main__':
 				print "CP to "+tftp_folder+" Error\n"
 
 		elif opt == 2:
-			print "Telnet in CMC & Upgrade the controller\n"
-			comport = str(raw_input("\nPlease Input Host Interface(ex:eth14/eth2): "))
-			ip = get_hostip(comport)
-			host = str(raw_input("\nPlease Input CMC ip(ex:192.168.1.100): "))
 			if getfilename == ' ':
-				print "please cp file to tftpboot folder\n"
+				print "#### Please CP image file to tftpboot folder! ####\n"
 			else:
+				print "\nTelnet in CMC & Upgrade the controller\n"
+				comport = str(raw_input("\nPlease Input Host Interface(ex:eth14/eth2): "))
+				ip = get_hostip(comport)
+				host = str(raw_input("\nPlease Input CMC ip(ex:192.168.1.100): "))
 				do_telnet(host, username, password, 1, ip)
 	
 		elif opt == 3:
@@ -134,8 +134,8 @@ if __name__=='__main__':
 			cmd = int(raw_input("\nIP Option: "))
 			host_interface = str(raw_input("\nInterface : "))
 			state = int(raw_input("\nstate (0:disable 1:enable) : "))
-			if state != 0 | state != 1:
-				return if
+		#	if state != 0 | state != 1:
+		#		return if
 			changes_hostip(cmd,host_interface,state)
 
 		else :
