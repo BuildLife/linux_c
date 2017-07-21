@@ -10,6 +10,8 @@ import httplib
 
 import os.path
 
+import re
+
 import sys
 import socket
 import struct
@@ -27,10 +29,10 @@ getfilename=' '
 
 def cp_upfile():
 	global getfilename
-	global get_status
 	get_filename = commands.getstatusoutput('ls ' + controller_folder +'CMCMGT-fw-* ')[1]
 	getfilename = get_filename.split(controller_folder)[1]
 	get_status = commands.getstatusoutput('sudo cp ' +controller_folder+getfilename+' '+tftp_folder)[0]
+	return get_status
 
 def get_hostip(ifname):
 	s_ip = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -79,6 +81,8 @@ def changes_hostip(cmd,host_inter,status):
 		elif cmd == 4:
 			o_ip = str(raw_input("\nKey in you want to change ip: "))
 			ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' '+o_ip)[0]
+		elif cmd == 5:
+			ch_status = commands.getstatusoutput('sudo ifconfig '+host_inter+' up')[0]		
 		else:
 			print "No this Option, Please input the Option again.......\n"
 	elif status == 0:
@@ -109,7 +113,7 @@ if __name__=='__main__':
 
 		if opt == 1:
 			print "CP file to /var/lib/tftpboot\n"
-			cp_upfile()
+			get_status = cp_upfile()
 			if get_status == 0:
 				print "CP "+getfilename+" to "+tftp_folder+" Success\n"
 			else :
@@ -126,17 +130,30 @@ if __name__=='__main__':
 				do_telnet(host, username, password, 1, ip)
 	
 		elif opt == 3:
-			print "Changes an ip address.\n"
-			print "1. Lab IP(10.99).\n"
-			print "2. CMC IP(100.2).\n"
-			print "3. CMC TFTP IP(1.5).\n"
-			print "4. Self defines an IP(XXX.XXX)\n"
-			cmd = int(raw_input("\nIP Option: "))
-			host_interface = str(raw_input("\nInterface : "))
 			state = int(raw_input("\nstate (0:disable 1:enable) : "))
-		#	if state != 0 | state != 1:
-		#		return if
-			changes_hostip(cmd,host_interface,state)
+			if state != 0 | state != 1: 
+				print 'Please input 1 or 0'
+			else:
+				if state == 1: 
+					state_str = "enable"
+				else: 
+					state_str = "disable" 
+				host_interface = str(raw_input("\nInterface : "))
+				match_eth = re.match('eth',host_interface)
+				if match_eth:
+					print "Changes an ip address.\n"
+					print "1. Lab IP(10.99).\n"
+					print "2. CMC IP(100.2).\n"
+					print "3. CMC TFTP IP(1.5).\n"
+					print "4. Self defines an IP(XXX.XXX)\n"
+					print "5. Only Set ",state_str
+					cmd = int(raw_input("\nIP Option: "))
+					if cmd > 5 or cmd < 1:
+						print 'Please input 1 ~ 5'
+					else:
+						changes_hostip(cmd,host_interface,state)
+				else:
+					print '\nInput the write string of eth interface!!!!!\n'
 
 		else :
 			print "Leave Program....\n"

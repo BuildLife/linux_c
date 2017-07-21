@@ -17,15 +17,39 @@ import threading
 import time
 
 '''
-def Packet_opt(option):
-	if option == 'TCP'
-
-	elif option == 'DHCP'
-
-	elif option == 'TFTP'
-def 
+Internet Protocol Version
+----------------------------------------
+| Protocol    Protocol name
+----------------------------------------
+|	1			ICMP
+---------------------------------------
+|	2			IGMP
+----------------------------------------
+|	3			GGP
+----------------------------------------
+|	6			TCP
+----------------------------------------
+|	8			EGP
+----------------------------------------
+|	9			IGP
+----------------------------------------
+|	17			UDP
+----------------------------------------
+|	41			IPv6
+----------------------------------------
+|	47			GRE
+----------------------------------------
+|	50			ESP
+----------------------------------------
+|	51			AH
+----------------------------------------
+|	58			ICMPv6
+----------------------------------------
+|	88			EIGRP
+----------------------------------------
+|	89			OSPF
+----------------------------------------
 '''
-
 def rece_eth(interface):
 	try:
 		s = socket.socket(socket.AF_PACKET,socket.SOCK_RAW,socket.ntohs(0x0003))
@@ -42,17 +66,36 @@ def rece_eth(interface):
 	#get src & des mac address
 	mac_addr = packet[0:14]
 
-	msd = struct.unpack('!6B6B2B',mac_addr)
+	msd = struct.unpack('!6B6BH',mac_addr)
 
 	des_addr = '%02x' % msd[0] +':'+ '%02x' % msd[1] +':'+ '%02x' % msd[2] +':'+ '%02x' % msd[3]+':'+ '%02x' % msd[4]+':'+'%02x' % msd[5];
 	src_addr = '%02x' % msd[6] +':'+ '%02x' % msd[7] +':'+ '%02x' % msd[8] +':'+ '%02x' % msd[9]+':'+ '%02x' % msd[10]+':'+'%02x' % msd[11];
+	Check_type = '%04x' % msd[12]
 
 	print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
 
-	print 'Type : 0x%02x' % msd[12] + '%02x' % msd[13]
+
+	if Check_type == '8100':
+		Eth_packet = packet[14:18]
+		VLAN_packet = struct.unpack('!HH',Eth_packet)
+		Eth_type = '%04x' % VLAN_packet[1]
+		if Eth_type == '0800' and Eth_type == '0806':
+			new_packet = packet[18:]
+			print 'VID : \n',VLAN_packet[0]
+			print 'Ethernet Type : 0x'+Eth_type+'\n'
+	else:
+		if Check_type == '0800' and '0806':
+			print 'Ethernet Type : 0x'+Check_type+'\n'
+			new_packet = packet[14:]
+
+
+	#All packet into the next function
+	divition_protocol(new_packet)
+
+def divition_protocol(internet_protocol_packet):
 	
 	#take first 20 characters for the ip header
-	ip_header = packet[14:34]
+	ip_header = internet_protocol_packet[0:20]	
 
 	#now unpack ip_header
 	iph = struct.unpack('!BBHHHBBH4s4s', ip_header)
@@ -68,14 +111,15 @@ def rece_eth(interface):
 	ip_s_addr = socket.inet_ntoa(iph[8]);
 	ip_d_addr = socket.inet_ntoa(iph[9]);
 
-	print 'Version : ' + str(version) + ' IP Header Length : ' + str(iph_length)
-	print ' TTL : ' + str(ttl) + ' Protocol :' + str(protocol)
-	print ' Source address : ' + str(ip_s_addr) + 'Destination address : '+ str(ip_d_addr)
+	print 'Version : ' + str(version) +'\n'+'IP Header Length : ' + str(iph_length)
+	print 'TTL : ' + str(ttl) +'\n'+'Protocol :' + str(protocol)
+	print 'Source address : ' + str(ip_s_addr) +'\n'+ 'Destination address : '+ str(ip_d_addr)
+
+	print '-----------------------------------------------\n'
 
 if __name__=='__main__':
 	while True:
 		p = threading.Thread(target=rece_eth(sys.argv[1]))
 		p.start()
-	#rece_eth(sys.argv[0])
 
 
