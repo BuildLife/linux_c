@@ -50,6 +50,13 @@ Internet Protocol Version
 |	89			OSPF
 ----------------------------------------
 '''
+
+
+def format_macaddress(mac):
+	mac_addr = '%02x:%02x:%02x:%02x:%02x:%02x' % struct.unpack('!6B',mac)
+	return mac_addr
+
+
 def rece_eth(interface):
 	try:
 		s = socket.socket(socket.AF_PACKET,socket.SOCK_RAW,socket.ntohs(0x0003))
@@ -57,7 +64,6 @@ def rece_eth(interface):
 		print 'Socket could not connect : ' + str(msg[0]) + 'Message ' + msg[1]
 		sys.exit()
 	s.bind((interface,0))
-	#while True:
 	packet = s.recvfrom(65535) #receive data buffer max 65535
 		
 	#packet string from tuple
@@ -66,31 +72,38 @@ def rece_eth(interface):
 	#get src & des mac address
 	mac_addr = packet[0:14]
 
-	msd = struct.unpack('!6B6BH',mac_addr)
+	msd = struct.unpack('!6s6sH',mac_addr)
 
-	des_addr = '%02x' % msd[0] +':'+ '%02x' % msd[1] +':'+ '%02x' % msd[2] +':'+ '%02x' % msd[3]+':'+ '%02x' % msd[4]+':'+'%02x' % msd[5];
-	src_addr = '%02x' % msd[6] +':'+ '%02x' % msd[7] +':'+ '%02x' % msd[8] +':'+ '%02x' % msd[9]+':'+ '%02x' % msd[10]+':'+'%02x' % msd[11];
-	Check_type = '%04x' % msd[12]
+	src_addr = format_macaddress(msd[0])
+	des_addr = format_macaddress(msd[1])
+	Check_type = '%04x' % msd[2]
 
 	print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
-
 
 	if Check_type == '8100':
 		Eth_packet = packet[14:18]
 		VLAN_packet = struct.unpack('!HH',Eth_packet)
 		Eth_type = '%04x' % VLAN_packet[1]
-		if Eth_type == '0800' and Eth_type == '0806':
+		if Eth_type == '0800':
 			new_packet = packet[18:]
-			print 'VID : \n',VLAN_packet[0]
-			print 'Ethernet Type : 0x'+Eth_type+'\n'
-	else:
-		if Check_type == '0800' and '0806':
-			print 'Ethernet Type : 0x'+Check_type+'\n'
+			print 'VID : '+ str(VLAN_packet[0])
+			print 'Ethernet Type : 0x'+Eth_type
+			divition_protocol(new_packet)
+		elif Eth_type == '0806':
+			new_packet = packet[18:]
+			print 'VID : '+ str(VLAN_packet[0])
+			print 'Ethernet Type : 0x'+Eth_type
+			ARP_protocol(new_packet)
+	elif Check_type == '0800':
+			print 'Ethernet Type : 0x'+Check_type
 			new_packet = packet[14:]
+			divition_protocol(new_packet)
+	elif Check_type == '0806':
+			print 'Ethernet Type : 0x'+Check_type
+			new_packet = packet[14:]
+			ARP_protocol(new_packet)
 
-
-	#All packet into the next function
-	divition_protocol(new_packet)
+	s.close()
 
 def divition_protocol(internet_protocol_packet):
 	
@@ -116,6 +129,34 @@ def divition_protocol(internet_protocol_packet):
 	print 'Source address : ' + str(ip_s_addr) +'\n'+ 'Destination address : '+ str(ip_d_addr)
 
 	print '-----------------------------------------------\n'
+
+def ARP_protocol(arp_packet):
+	ip_header = arp_packet[0:28]	
+
+	#now unpack ip_header
+	arp = struct.unpack('!HHBBH6s4s6s4s', ip_header)
+
+	hardware_type = '%04x' % arp[0]
+	protocol_type = '%04x' % arp[1]
+	hardware_size = arp[2]
+	protocol_size = arp[3]
+	
+	Opcode = '%04x' % arp[4]
+
+	src_addr = format_macaddress(arp[5])
+	ip_s_addr = socket.inet_ntoa(arp[6])
+	
+	des_addr = format_macaddress(arp[7])
+	ip_d_addr = socket.inet_ntoa(arp[8])
+
+	print 'Hardware Type : ' + str(hardware_type) +' '+'Protocol type : ' + str(protocol_type)
+	print 'Hardware size : ' + str(hardware_size) +' '+'Protocol size : ' + str(protocol_size)
+	print 'Opcode : ' + str(Opcode)
+	print 'Source Mac address : ' , src_addr
+	print 'Source IP address : ' + str(ip_s_addr)
+	print 'Destination Mac address : ', des_addr
+	print 'Destination IP address : '+ str(ip_d_addr)
+
 
 if __name__=='__main__':
 	while True:
