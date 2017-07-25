@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import array
 import commands
 import fcntl
 	   
@@ -6,7 +7,8 @@ import getpass
 import httplib
 			  
 import os.path
-			    
+import re
+
 import sys 
 import socket
 import struct
@@ -15,6 +17,7 @@ import subprocess
 import telnetlib
 import threading
 import time
+
 
 '''
 Internet Protocol Version
@@ -78,21 +81,20 @@ def rece_eth(interface):
 	des_addr = format_macaddress(msd[1])
 	Check_type = '%04x' % msd[2]
 
-	print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
+	if Check_type == '8100' or '0806' or '0800':
+		print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
 
 	if Check_type == '8100':
 		Eth_packet = packet[14:18]
 		VLAN_packet = struct.unpack('!HH',Eth_packet)
 		Eth_type = '%04x' % VLAN_packet[1]
+		print 'VID : '+ str(VLAN_packet[0])
+		print 'Ethernet Type : 0x'+Eth_type
 		if Eth_type == '0800':
 			new_packet = packet[18:]
-			print 'VID : '+ str(VLAN_packet[0])
-			print 'Ethernet Type : 0x'+Eth_type
 			divition_protocol(new_packet)
 		elif Eth_type == '0806':
 			new_packet = packet[18:]
-			print 'VID : '+ str(VLAN_packet[0])
-			print 'Ethernet Type : 0x'+Eth_type
 			ARP_protocol(new_packet)
 	elif Check_type == '0800':
 			print 'Ethernet Type : 0x'+Check_type
@@ -107,6 +109,9 @@ def rece_eth(interface):
 
 def divition_protocol(internet_protocol_packet):
 	
+	Pro_array = [1,2,3,6,8,9,17,41,47,50,51,58,88,89]
+	Pro_name = ["ICMP","IGMP","GGP","TCP","EGP","IGP","UDP","IPv6","GRE","ESP","AH","ICMPv6","EIGRP","OSPF"]
+
 	#take first 20 characters for the ip header
 	ip_header = internet_protocol_packet[0:20]	
 
@@ -125,10 +130,32 @@ def divition_protocol(internet_protocol_packet):
 	ip_d_addr = socket.inet_ntoa(iph[9]);
 
 	print 'Version : ' + str(version) +'\n'+'IP Header Length : ' + str(iph_length)
-	print 'TTL : ' + str(ttl) +'\n'+'Protocol :' + str(protocol)
+	print 'TTL : ' + str(ttl)
+	for i in range(len(Pro_array)):
+		if str(protocol) == str(Pro_array[i]):
+			Pro_type = Pro_name[i]
+			print 'Protocol : '+ str(protocol) + ' ('+Pro_name[i]+') '
 	print 'Source address : ' + str(ip_s_addr) +'\n'+ 'Destination address : '+ str(ip_d_addr)
 
-	print '-----------------------------------------------\n'
+	if Pro_type == "UDP":
+		Trans_protocol(internet_protocol_packet[20:])
+
+def Trans_protocol(trans_packet):
+	Trans_data = trans_packet[0:8]
+
+	data_analysis = struct.unpack('!HHHH',Trans_data)
+
+	Sour_port = data_analysis[0]
+	Des_port = data_analysis[1]
+	Length = data_analysis[2]
+	Checksum = '%04x' % data_analysis[3]
+
+	print 'Source Port : ' + str(Sour_port)
+	print 'Destination Port : ' + str(Des_port)
+	print 'Length : ' + str(Length)
+	print 'Checksum : 0x'+ Checksum
+
+	print '---------------------------------------------------\n'
 
 def ARP_protocol(arp_packet):
 	ip_header = arp_packet[0:28]	
@@ -157,6 +184,7 @@ def ARP_protocol(arp_packet):
 	print 'Destination Mac address : ', des_addr
 	print 'Destination IP address : '+ str(ip_d_addr)
 
+	print '---------------------------------------------------\n'
 
 if __name__=='__main__':
 	while True:
