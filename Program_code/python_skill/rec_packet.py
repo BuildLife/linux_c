@@ -107,6 +107,10 @@ def rece_eth(interface):
 
 	s.close()
 
+def ethernet_header(header_packet):
+	
+
+
 def divition_protocol(internet_protocol_packet):
 	
 	Pro_array = [1,2,3,6,8,9,17,41,47,50,51,58,88,89]
