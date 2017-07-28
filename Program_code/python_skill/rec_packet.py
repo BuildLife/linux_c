@@ -53,7 +53,7 @@ Internet Protocol Version
 |	89			OSPF
 ----------------------------------------
 '''
-
+Pro_status = 0
 
 def format_macaddress(mac):
 	mac_addr = '%02x:%02x:%02x:%02x:%02x:%02x' % struct.unpack('!6B',mac)
@@ -81,8 +81,7 @@ def rece_eth(interface):
 	des_addr = format_macaddress(msd[1])
 	Check_type = '%04x' % msd[2]
 
-	if Check_type == '8100' or '0806' or '0800':
-		print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
+	print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
 
 	if Check_type == '8100':
 		Eth_packet = packet[14:18]
@@ -109,10 +108,41 @@ def rece_eth(interface):
 
 def ethernet_header(header_packet):
 	
+	mac_addr = packet[0:14]
 
+	msd = struct.unpack('!6s6sH',mac_addr)
+
+	src_addr = format_macaddress(msd[0])
+	des_addr = format_macaddress(msd[1])
+	Check_type = '%04x' % msd[2]
+		
+	print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
+	
+	if Check_type == '8100':
+		Eth_packet = packet[14:18]
+		VLAN_packet = struct.unpack('!HH',Eth_packet)
+		Eth_type = '%04x' % VLAN_packet[1]
+		print 'VID : '+ str(VLAN_packet[0])
+		print 'Ethernet Type : 0x'+Eth_type
+		if Eth_type == '0800':
+			new_packet = packet[18:]
+			divition_protocol(new_packet)
+		elif Eth_type == '0806':
+			new_packet = packet[18:]
+			ARP_protocol(new_packet)
+	elif Check_type == '0800':
+			print 'Ethernet Type : 0x'+Check_type
+			new_packet = packet[14:]
+			divition_protocol(new_packet)
+	elif Check_type == '0806':
+			print 'Ethernet Type : 0x'+Check_type
+			new_packet = packet[14:]
+			ARP_protocol(new_packet)
+
+	return receive_status
 
 def divition_protocol(internet_protocol_packet):
-	
+	global Pro_status
 	Pro_array = [1,2,3,6,8,9,17,41,47,50,51,58,88,89]
 	Pro_name = ["ICMP","IGMP","GGP","TCP","EGP","IGP","UDP","IPv6","GRE","ESP","AH","ICMPv6","EIGRP","OSPF"]
 
@@ -140,7 +170,12 @@ def divition_protocol(internet_protocol_packet):
 			Pro_type = Pro_name[i]
 			print 'Protocol : '+ str(protocol) + ' ('+Pro_name[i]+') '
 	print 'Source address : ' + str(ip_s_addr) +'\n'+ 'Destination address : '+ str(ip_d_addr)
-
+	
+	if Pro_type == 'UDP' or 'TCP':
+		Pro_status = 1
+	else:
+		Pro_status = 0
+	
 	if Pro_type == "UDP":
 		Trans_protocol(internet_protocol_packet[20:])
 
@@ -162,6 +197,8 @@ def Trans_protocol(trans_packet):
 	print '---------------------------------------------------\n'
 
 def ARP_protocol(arp_packet):
+	global Pro_status
+	Pro_status = 1
 	ip_header = arp_packet[0:28]	
 
 	#now unpack ip_header
