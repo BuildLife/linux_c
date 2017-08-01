@@ -19,6 +19,7 @@ import threading
 import time
 
 
+
 '''
 Internet Protocol Version
 ----------------------------------------
@@ -55,6 +56,19 @@ Internet Protocol Version
 '''
 Pro_status = 0
 
+class packet_format(object):
+	
+	def __init__(self,packet):
+		self.hardware_type = packet[0]
+		self.protocol_type = packet[1]
+		self.
+
+	def hardware(self):
+		return '%04x' % self.hardware_type
+	def protocol(self):
+		return '%04x' % self.protocol_type
+	def 
+
 def format_macaddress(mac):
 	mac_addr = '%02x:%02x:%02x:%02x:%02x:%02x' % struct.unpack('!6B',mac)
 	return mac_addr
@@ -64,7 +78,7 @@ def rece_eth(interface):
 	try:
 		s = socket.socket(socket.AF_PACKET,socket.SOCK_RAW,socket.ntohs(0x0003))
 	except socket.error , msg:
-		print 'Socket could not connect : ' + str(msg[0]) + 'Message ' + msg[1]
+		print('Socket could not connect : ',str(msg[0]),'Message ',msg[1])
 		sys.exit()
 	s.bind((interface,0))
 	packet = s.recvfrom(65535) #receive data buffer max 65535
@@ -81,14 +95,14 @@ def rece_eth(interface):
 	des_addr = format_macaddress(msd[1])
 	Check_type = '%04x' % msd[2]
 
-	print 'Source mac : ' + des_addr + '\nDestination mac : ' + src_addr
+	print 'Source mac : ' + src_addr + '\nDestination mac : ' + des_addr
 
 	if Check_type == '8100':
 		Eth_packet = packet[14:18]
 		VLAN_packet = struct.unpack('!HH',Eth_packet)
 		Eth_type = '%04x' % VLAN_packet[1]
+		print 'Ethernet Type : 0x',Eth_type
 		print 'VID : '+ str(VLAN_packet[0])
-		print 'Ethernet Type : 0x'+Eth_type
 		if Eth_type == '0800':
 			new_packet = packet[18:]
 			divition_protocol(new_packet)
@@ -96,11 +110,11 @@ def rece_eth(interface):
 			new_packet = packet[18:]
 			ARP_protocol(new_packet)
 	elif Check_type == '0800':
-			print 'Ethernet Type : 0x'+Check_type
+			print 'Ethernet Type : 0x',Check_type
 			new_packet = packet[14:]
 			divition_protocol(new_packet)
 	elif Check_type == '0806':
-			print 'Ethernet Type : 0x'+Check_type
+			print 'Ethernet Type : 0x',Check_type
 			new_packet = packet[14:]
 			ARP_protocol(new_packet)
 
@@ -204,8 +218,10 @@ def ARP_protocol(arp_packet):
 	#now unpack ip_header
 	arp = struct.unpack('!HHBBH6s4s6s4s', ip_header)
 
-	hardware_type = '%04x' % arp[0]
-	protocol_type = '%04x' % arp[1]
+	arp_type = packet_format(arp)
+
+	#hardware_type = '%04x' % arp[0]
+	#protocol_type = '%04x' % arp[1]
 	hardware_size = arp[2]
 	protocol_size = arp[3]
 	
@@ -217,7 +233,8 @@ def ARP_protocol(arp_packet):
 	des_addr = format_macaddress(arp[7])
 	ip_d_addr = socket.inet_ntoa(arp[8])
 
-	print 'Hardware Type : ' + str(hardware_type) +' '+'Protocol type : ' + str(protocol_type)
+	#print 'Hardware Type : ' + str(hardware_type) +' '+'Protocol type : ' + str(protocol_type)
+	print 'Hardware Type : ' + arp_type.hardware()  +' '+'Protocol type : ' + arp_type.protocol()
 	print 'Hardware size : ' + str(hardware_size) +' '+'Protocol size : ' + str(protocol_size)
 	print 'Opcode : ' + str(Opcode)
 	print 'Source Mac address : ' , src_addr
