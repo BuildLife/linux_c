@@ -56,18 +56,32 @@ Internet Protocol Version
 '''
 Pro_status = 0
 
-class packet_format(object):
+class ARP_packet_format(object):
 	
 	def __init__(self,packet):
 		self.hardware_type = packet[0]
 		self.protocol_type = packet[1]
-		self.
+		self.hardware_size = packet[2]
+		self.protocol_size = packet[3]
+		self.opcode = packet[4]
 
-	def hardware(self):
+	def Hardware_type(self):
 		return '%04x' % self.hardware_type
-	def protocol(self):
+	
+	def Protocol_type(self):
 		return '%04x' % self.protocol_type
-	def 
+	
+	def Hardware_size(self):
+		return self.hardware_size
+	
+	def Protocol_size(self):
+		return self.protocol_size
+	
+	def Opcode(self):
+		return '%04x' % self.opcode
+
+	def mac_addr(self,mac):
+		return '%02x:%02x:%02x:%02x:%02x:%02x' % struct.unpack('!6B',mac)
 
 def format_macaddress(mac):
 	mac_addr = '%02x:%02x:%02x:%02x:%02x:%02x' % struct.unpack('!6B',mac)
@@ -218,28 +232,32 @@ def ARP_protocol(arp_packet):
 	#now unpack ip_header
 	arp = struct.unpack('!HHBBH6s4s6s4s', ip_header)
 
-	arp_type = packet_format(arp)
+	arp_type = ARP_packet_format(arp)
 
 	#hardware_type = '%04x' % arp[0]
 	#protocol_type = '%04x' % arp[1]
-	hardware_size = arp[2]
-	protocol_size = arp[3]
+	#hardware_size = arp[2]
+	#protocol_size = arp[3]
 	
-	Opcode = '%04x' % arp[4]
+	#Opcode = '%04x' % arp[4]
 
-	src_addr = format_macaddress(arp[5])
+	#src_addr = format_macaddress(arp[5])
 	ip_s_addr = socket.inet_ntoa(arp[6])
 	
-	des_addr = format_macaddress(arp[7])
+	#des_addr = format_macaddress(arp[7])
 	ip_d_addr = socket.inet_ntoa(arp[8])
 
 	#print 'Hardware Type : ' + str(hardware_type) +' '+'Protocol type : ' + str(protocol_type)
-	print 'Hardware Type : ' + arp_type.hardware()  +' '+'Protocol type : ' + arp_type.protocol()
-	print 'Hardware size : ' + str(hardware_size) +' '+'Protocol size : ' + str(protocol_size)
-	print 'Opcode : ' + str(Opcode)
-	print 'Source Mac address : ' , src_addr
+	print 'Hardware Type : ' + arp_type.Hardware_type()  +' '+'Protocol type : ' + arp_type.Protocol_type()
+	print 'Hardware Size : ' + str(arp_type.Hardware_size())  +' '+'Protocol Size : ' + str(arp_type.Protocol_size())
+	#print 'Hardware size : ' + str(hardware_size) +' '+'Protocol size : ' + str(protocol_size)
+	print 'Opcode : ' + arp_type.Opcode()
+	#print 'Opcode : ' + str(Opcode)
+	#print 'Source Mac address : ' , src_addr
+	print 'Source Mac address : ' , arp_type.mac_addr(arp[5])
 	print 'Source IP address : ' + str(ip_s_addr)
-	print 'Destination Mac address : ', des_addr
+	#print 'Destination Mac address : ', des_addr
+	print 'Destination Mac address : ', arp_type.mac_addr(arp[7])
 	print 'Destination IP address : '+ str(ip_d_addr)
 
 	print '---------------------------------------------------\n'
