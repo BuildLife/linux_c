@@ -11,6 +11,8 @@ typedef struct node{
 void insert(NODE *,int );
 void removed(NODE *,int );
 void display(NODE *);
+void reverse(NODE *);
+
 
 int main()
 {
@@ -28,6 +30,7 @@ int main()
 		printf("1. insert\n");
 		printf("2. display\n");
 		printf("3. remove \n");
+		printf("4. reverse \n");
 		printf(":");
 		scanf("%d",&number);
 		switch(number)
@@ -49,7 +52,11 @@ int main()
 					scanf("%d",&re_num);
 					printf("remove : %d\n",re_num);
 					removed(list,re_num);
-				break;
+			break;
+
+			case 4:
+					reverse(list);
+			break;
 		}
 
 	}
@@ -109,4 +116,22 @@ void display(NODE *list)
 		no = no -> next;
 	}
 	printf("\n");
+}
+
+void reverse(NODE *list)
+{
+	NODE *prev = list;
+	NODE *current = NULL;
+	NODE *next = (struct node*)malloc(sizeof(struct node));
+
+	while(prev != NULL)
+	{
+		next = prev -> next;
+		prev -> next = current;
+		current = prev;
+		prev = next;
+		printf("%d,",current -> data);
+		list = current;
+	}
+		
 }
