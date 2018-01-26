@@ -50,10 +50,29 @@ Answer : x = 100, y = 50;
 /************************************************************/
 
 
+/********** char Pointer print ******************/
+
+char *str = "string";
+
+
+while(*str)
+{
+	printf("%c\n",*str);
+	str++;
+}
+
+/*--------- char array Pointer print -----------*/
+
+char *str_a[] = {"string","test", "quit"};
+int i = 0;
+
+while( i < strlen(*str_a))
+{
+	printf("%s\n",*(str_a + i));
+	(*str_a)++;
+	i++;
+}
 
 
 
-
-
-
-
+/************************************************/

@@ -4,35 +4,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/*use in true & false type : boolean type*/
-#include <stdbool.h>
-
 /*time lib*/
 #include <time.h>
 #include <unistd.h>
 
-/*Serial port connect*/
-#include <fcntl.h>
-#include <termios.h>
-
 /*Variable type*/
-//#include <bsd/string.h>
 #include <string.h>
 #include <sys/types.h>
 #include <stdint.h>
 #include <memory.h>
 
 /*socket include*/
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
 #include <errno.h>
-
 
 #include <pcap.h>
 #include <net/ethernet.h>
@@ -50,33 +41,6 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
-
-#define MAC_ADDRSTRLEN 2*6+5+1
-#define OPTION82_LENGTH 18
-
-
-/*For Comport to control*/
-#define BAUDRATE B38400
-#define _POSIX_SOURCE 1 /*Match with POSIX system*/
-
-#define FALSE 0
-#define TRUE 1
-
-
-/*Link list struct*/
-typedef struct _node{
-	void *data;
-	struct _node *next;
-}Node;
-
-typedef struct _linkedList{
-	Node *head;
-	Node *tail;
-	Node *current;
-}LinkedList;
-
-
-
 
 typedef struct S_ETH_HEADER
 {
@@ -115,19 +79,11 @@ typedef struct ARP_HEADER
 }__attribute__((__packed__)) arp_header;
 
 
-//typedef struct sockcmd 
-//{
-	/*Socket client buffer*/
-	//ASCII C L I E N T O P E N: 
-	char *CLIENTOPEN = "CLIENTOPEN";
 
-	/*Socket Server buffer*/
-	//ASCII S E R V E R O P E N: 
-	char *SERVEROPEN = "SERVEROPEN";
+#define MAC_ADDRSTRLEN 2*6+5+1
 
-	//ASCII C L O S E:
-	char *SERVERCLOSE = "CLOSE";
-//}__attribute__((__packed__)) Socket_Cmd;
+
+
 
 /*2293 0x08 0x2D*/
 /*mac default 0x00 0x1c 0x7b 0x11 0x11 0x12*/
@@ -394,143 +350,72 @@ char DHCPpktcBuf_offer[] = {
 Arp[6~11] -> Source MAC*/
 char ArpPacket[]  = {
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x1c, 
-0x7b, 0x11, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01,
+0x7b, 0x22, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01,
 0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 
-0x00, 0x01, 0x00, 0x1c, 0x7b, 0x11, 0x00, 0x00, 
+0x00, 0x01, 0x00, 0x1c, 0x7b, 0x22, 0x00, 0x00, 
 0xc0, 0xa8, 0x0a, 0x84, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0xc0, 0xa8, 0x0a, 0x02, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, };
 
+void MainMenu(char *mode, int SocketAutoTesting)
+{
+	if(mode == "default")
+	{
+		printf("________________ User Menu ________________\n");
+		printf("|                                         |\n");
+		printf("| 1.SVGM MODE                             |\n");
+		printf("| 2.DVGM MODE                             |\n");
+		printf("| 3.Exit this Program                     |\n");
+		printf("| 4.Start Socket thread client            |\n");
+		printf("| h.User Menu show                        |\n");
+		printf("| Ctrl+c --> Leave the sending loop       |\n");
+		printf("|_________________________________________|\n");
+		printf("\n");
+		printf(":");
+	}
+	else if(mode == "DVGM" || mode == "SVGM")
+	{
+		if(SocketAutoTesting == 0)
+		{
+			
 
 
-/*TFTP Send Packet*/
-/*TFTP[0~5] --> arp gets tftp server mac
-  TFTP[6~11] --> cm mac 
-  
-  docsis files has send 10k.cfg 
-  TFTP[44~51] start 31 30 6b 2e 63 66 67 00 end*/
-/*Checksum(Identification) : 0x0006*/
-
-char tftpPacket_docsis[] = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c,
-0x7b, 0x11, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00,
-0x00, 0x39, 0x00, 0x06, 0x00, 0x00, 0x40, 0x11,
-0xe5, 0x3c, 0xc0, 0xa8, 0x0a, 0x1f, 0xc0, 0xa8,
-0x0a, 0x02, 0xc0, 0x05, 0x00, 0x45, 0x00, 0x25,
-0xe9, 0x90, 0x00, 0x01, 0x31, 0x30, 0x6b, 0x2e,
-0x63, 0x66, 0x67, 0x00, 0x6f, 0x63, 0x74, 0x65,
-0x74, 0x00, 0x62, 0x6c, 0x6b, 0x73, 0x69, 0x7a,
-0x65, 0x00, 0x31, 0x34, 0x34, 0x38, 0x00 };
-
-/*Emta files eusip_4000.bin
-  pktc files has send eusip_4000.bin
-  TFTP[44 ~ 58]start 65 75 73 69 70 5f 34 30 30 30 2e 62 69 6e 00 end*/
-/*Checksum(Identification) : 0x0017*/
-
-char tftpPacket_emta[] = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c,
-0x7b, 0x22, 0x00, 0x00, 0x81, 0x00, 0x08, 0x01, 0x08, 0x00, 0x45, 0x00,
-0x00, 0x40, 0x00, 0x17, 0x00, 0x00, 0x40, 0x11,
-0xe4, 0xbf, 0xc0, 0xa8, 0x0a, 0x84, 0xc0, 0xa8,
-0x0a, 0x02, 0xc0, 0x13, 0x00, 0x45, 0x00, 0x2c,
-0xd3, 0x9c, 0x00, 0x01, 0x65, 0x75, 0x73, 0x69,
-0x70, 0x5f, 0x34, 0x30, 0x30, 0x30, 0x2e, 0x62,
-0x69, 0x6e, 0x00, 0x6f, 0x63, 0x74, 0x65, 0x74,
-0x00, 0x62, 0x6c, 0x6b, 0x73, 0x69, 0x7a, 0x65,
-0x00, 0x31, 0x34, 0x34, 0x38, 0x00 };
-
-typedef enum{
-	default_vid = 10,
-	docsis_vid = 1000,
-	pktc_vid = 2000,
-}svgm_vid_table;
-
-
-typedef struct Send_Buf{
-	
-	char *SendBuf; //docsis buffer
-	char *SendpktcBuf; //pktc buffer
-	char *ReceiveBuf;
-
-	char *SendBuf_offer; //docsis offer buffer
-	char *SendpktcBuf_offer; //pktc offer buffer
-	char *ReceiveBuf_offer;
-
-	char *SendBuf_arp; //arp buffer
-	char *ReceiveBuf_arp;
-
-	char *SendBuf_tftpdocsis; //tftp docsis buffer 10k.cfg
-	char *SendBuf_tftpemta; // tftp pktc(emta) buffer eusip_4000.bin
-	char *ReceiveBuf_tftp; 
-
-}__attribute__((__packed__)) SendingBuffer;
-
-/*Set Ethernet struct*/
-/*For LAN docsis buffer*/
-eth_header *LAN_docsis_ethhdr = (eth_header*)DHCPdocsisBuf;
-
-/*For LAN pktc buffer*/
-eth_header *LAN_pktc_ethhdr = (eth_header*)DHCPpktcBuf;
-
-/*For LAN ARP buffer*/
-eth_header *LAN_arp_ethhdr = (eth_header*)ArpPacket;
-
-/*For LAN TFTP buffer*/
-eth_header *LAN_tftpdocsis_ethhdr = (eth_header*)tftpPacket_docsis;
-
-/*For LAN TFTP buffer*/
-eth_header *LAN_tftpemta_ethhdr = (eth_header*)tftpPacket_emta;
-
-/*For WAN docsis buffer*/
-eth_header *WAN_docsis_ethhdr_offer = (eth_header*)DHCPdocsisBuf_offer;
-
-/*For WAN pktc buffer*/
-eth_header *WAN_pktc_ethhdr_offer = (eth_header*)DHCPpktcBuf_offer;
+		}
 
 
 
-/*Use to share memory function like malloc*/
-void *xmalloc(size_t size);
+	}
+}
 
-/*Insert send buffer*/
-void InsertSendBuffer();
+void ThreadCommandReceive()
+{
+	char Cmdbuf;
 
-/*mac address and vid add by sending times*/
-void MACandVIDplus();
 
-void Signal_Stophandler();
+	while(Cmdbuf = fgetc(stdin) != NULL)
+	{
+		if(Cmdbuf == '1' || Cmdbuf == '2')
+			OptionReceive(0, Cmdbuf);
+		else if(Cmdbuf == '3')
+		{
+			exit(0);
+		}
+		else if(Cmdbuf == '4')
+		{
 
-void ThreadClientSocket();
 
-void Menu(char*);
+		}
+		else if(Cmdbuf == 'h' || Cmdbuf == 'H')
+		{
+			MainMenu("default");
+		}
+	}
+}
 
-char *MacaddrtoString(unsigned char *);
+int main(int argc, char **argv)
+{
 
-void VGM_MODE(u_int32_t , const u_int8_t*);
 
-void dump_DHCP_ip(ip_header*, int, char [], unsigned int );
 
-void dump_ARP_ip(arp_header*, int);
-
-void dump_TFTP_ip(ip_header*, int);
-
-int Option82_Compare(char*, char[], unsigned int, int *, char *, unsigned int);
-
-void pcap_handler_func(unsigned char*, const struct pcap_pkthdr*, const unsigned char *);
-
-void pcap_handler_func_lan(unsigned char*, const struct pcap_pkthdr *, const unsigned char *);
-
-void read_loop();
-
-void read_loop_lan();
-
-void Option_ReceiveAndRunning(int, char);
-
-void Command_Option();
-
-void GetEthMACaddress(char []);
-
-int InsertMacTable(char*, char*);
-
-char *GetLocalTimetoString(const time_t *);
+}
