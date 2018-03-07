@@ -4,10 +4,10 @@ import os
 import sys
 import time
 import datetime
-import xlrd
-import xlwt
-import xdrlib
-from openpyxl.reader.excel import load_workbook
+#import xlrd
+#import xlwt
+#import xdrlib
+from openpyxl.reader.excel import load_workbook  ### apt-get install python-openpyxl
 import threading
 import serial as ser
 import pandas as pd
@@ -127,10 +127,7 @@ SnmpCommandKeyList = ["snmpset -v 2c -c private 192.168.100.1 .1.3.6.1.4.1.4413.
 					  "snmpset -v 2c -c private 192.168.100.1 .1.3.6.1.4.1.4413.2.99.1.1.2.2.2.4.0 x 0x",
 					  "snmpset -v 2c -c private 192.168.100.1 .1.3.6.1.4.1.4413.2.99.1.1.2.2.2.5.0 x 0x"]
 
-maclist = []
-keylist = []
-
-filename = 'test_excel.xlsx'
+Excelfilename = 'test_excel.xlsx'
 
 CMport = '/dev/ttyUSB0'
 CMbaud = 115200
@@ -141,14 +138,21 @@ BroadNUM = sys.argv[1]
 BroadNO = sys.argv[2]
 
 print 'Connect to CM.......'
-#Conn = ser.Serial(CMport, CMbaud, timeout = 1, )
-#if not Conn.isOpen():
-#	sys.exit()
+Conn = ser.Serial(CMport, CMbaud, timeout = 0, bytesize=ser.EIGHTBITS, parity=ser.PARITY_NONE, stopbits=ser.STOPBITS_ONE, xonxoff=False, rtscts=False, dsrdtr=False, writeTimeout=0)
+if not Conn.isOpen():
+	sys.exit()
+
 
 cMACNum=0
 KEYNum=0
 cRetnum=0
+maclist = []
+keylist = []
 
+Cflag = False
+
+
+### Reading MAC and Key excel file ###
 def ReadExcel(f_name, nMac, nKey, retnum):
 	print 'Read MAC & KEY excel'
 	
@@ -183,8 +187,8 @@ def ReadExcel(f_name, nMac, nKey, retnum):
 			retnum = num
 
 	if retnum == 0:
-		print 'NO '+ BroadNUM +'module'
-		sys.exit()
+		print 'NO '+ BroadNUM +' Module, please check it again' 
+		os._exit(0)
 
 	# Get table values
 	if Fcontent.cell('D1').value == "Broad No.":
@@ -206,9 +210,8 @@ def ReadExcel(f_name, nMac, nKey, retnum):
 	Fcontent.cell('D' + str(retnum)).value = str(BroadNO)
 	Fcontent.cell('E' + str(retnum)).value = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-	#print dir(xlsx)
 	#Fcontent.merge_cells('A' + str(retnum) + ':' + 'A' + str(retnum+5))
-	xlsx.save(filename)
+	xlsx.save(f_name)
 
 	return retnum
 
@@ -217,19 +220,20 @@ def ReadExcel(f_name, nMac, nKey, retnum):
 #	print 'Write Broad NO: '
 '''		
 
-# Set frequnecy & coef & tuner1
+### Set frequnecy & coef & tuner1 in Console ###
 def WriteFreq():
 	print 'Write frequnecy & coef & Tuner1 in Console'
-	Conn.write("cd /"+"\n")
-	Conn.write("\n")
-	Conn.write("/doc/sc"+"\n")
-	Conn.write("\n")
+	#Conn.write("cd /"+"\n")
+	#Conn.write("/doc/sc"+"\n")
+	#Conn.flush()
 	while True:
-	#	if buf == "":
-	#		Conn.write("\n")
-		if buf.find("CM>") == 0:
+		if Cflag:
+			time.sleep(5)
 			Conn.write("cd non/ds" + "\n")
-			if buf.find("CM/NonVol/Ds Cal NonVol> ") == 0:
+			#print data.find("CM/NonVol/Ds Cal NonVol>")
+			#if data.find("CM/NonVol/Ds Cal NonVol>") > 0:
+			time.sleep(5)
+			if Cflag:
 				print 'Enter in DS Cal NonVol folder'
 				Conn.write("num_freq 17" + "\n")
 				time.sleep(0.5)
@@ -241,75 +245,132 @@ def WriteFreq():
 				time.sleep(0.5)
 				for freq in freqlist:
 					Conn.write(freq + "\n")
-					time.sleep(0.1)
+					time.sleep(0.5)
 				Conn.write("write" + "\n")
 				Conn.write("yes" + "\n")
 				print 'write freq done'
 				for coef in coeflist:
 					Conn.write(coef + "\n")
-					time.sleep(0.1)
+					time.sleep(0.5)
 				Conn.write("write" + "\n")
 				Conn.write("yes" + "\n")
 				print 'write coef done'
 				for tuner1 in Tuner1list:
 					Conn.write(tuner1 + "\n")
-					time.sleep(0.1)
+					time.sleep(0.5)
 				Conn.write("write" + "\n")
 				Conn.write("yes" + "\n")
 				print 'write Tuner1 done'
+				Conn.flush()
 				break
 		
-# Set Mac Address
+### Set Mac Address in Console ###
 def WriteMac(nMac, nKey):
 	print 'Start to Write MAC in Console'
 	Conn.write("cd /"+"\n")
 	#if buf.find("CM> ") == 0:
 	if maclist and keylist:
 		Conn.write("cd non/hal" + "\n")
-		if buf.find("CM/NonVol/HalIf NonVol>") == 0:
-			for mac in maclist:
-				Conn.write("mac_address "+ str((maclist.index(mac))+1) + " " + mac + "\n")
-				time.sleep(0.5)
+		time.sleep(1)
+		#if buf.find("CM/NonVol/HalIf NonVol>") == 0:
+		conmac = ''
+		for mac in maclist:
+			for c in range(0,12,2):
+				if c == 10:
+					conmac = conmac + mac[c:c+2]
+					break
+				else:
+					conmac = conmac + mac[c:c+2] + ':'
+			Conn.write("mac_address "+ str((maclist.index(mac))+1) + " " + conmac + "\n")
+			conmac = ''
 			Conn.write("write" + "\n")
-			Conn.write("yes" + "\n")
-			print 'Set mac address down'
+			time.sleep(0.5)
+		Conn.write("write" + "\n")
+		#Conn.write("yes" + "\n")
+		print 'Set mac address down'
+	else:
+		print 'No key and mac can set in CM'
+		print 'Please check excel content'
+		#sys.exit()
+		os._exit(0)
 
 
-# Snmp Command for set MAC & Key
+### Snmp Command for set MAC & Key ###
 def SnmpCmd():
 	print 'Snmp Command to Set MAC and Key'
 	for snmpcmdopen in SnmpCommandOpen:
 		os.system(snmpcmdopen)
-	for snmpcmdmac in SnmpCommandMacList:
-		os.system(snmpcmdmac + '"0x' + str(maclist[SnmpCommandMacList.index(snmpcmdmac)]) + '"')
+	time.sleep(1)
+#	for snmpcmdmac in SnmpCommandMacList:
+#		os.system(snmpcmdmac + '"0x' + str(maclist[SnmpCommandMacList.index(snmpcmdmac)]) + '"')
+#		time.sleep(1)
 	for snmpcmdkey in SnmpCommandKeyList:
 		os.system(snmpcmdkey + str(keylist[SnmpCommandKeyList.index(snmpcmdkey)]))
+		time.sleep(1)
 	for snmpcmdclose in SnmpCommandClose:
 		os.system(snmpcmdclose)
+	print 'Snmp Command set down............'
 
-buf=''
+
+
+
+### Reading Console log ###
+data=''
 def Read_thread(Conn):
-	Conn.setRtsCts(0)
+	global Cflag
 	print 'Start to read....'
-	data = ''
 	while True:
-		#data = Conn.read(100)
-		#data = Conn.readline()
-		data = Conn.readall()
-		#bytesToRead = Conn.inWaiting()
-		#buf = Conn.read(bytesToRead)
-		print data
+		try:
+			data = Conn.read(1000)
+			#data = Conn.readline()
+			#data = Conn.readall()
+			#print data.find('CM>')
+			if data.find('CM>') > 0:
+				Cflag = True
+			elif data.find('Scanning DS Channel') > 0 or data.find('Checking plant power') > 0:
+				Conn.write("/doc/sc" + "\n")
+		#	print 'cflag = ' + str(Cflag)
+			if data != '':
+				print data
+			time.sleep(0.02)
+		except KeyboardInterrupt:
+			print 'exiting'
+			break
+	Conn.flush()
+	Conn.close()
+	os_.exit(0)
+		
 
 if __name__=='__main__':
 	# Reading Console Thread
-	#thread = threading.Thread(target=Read_thread, args=(Conn,))
-	#thread.start()
+	thread = threading.Thread(target=Read_thread, args=(Conn,))
+	thread.start()
 
 	# Reading Key and MAC excel
-	cRetnum = ReadExcel(filename, cMACNum, KEYNum, cRetnum)
-	#WriteFreq
-	#WriteMac(cRetnum,0)
-	#SnmpCmd
+	cRetnum = ReadExcel(Excelfilename, cMACNum, KEYNum, cRetnum)
+	Conn.write("\n")
+	Conn.write("cd /" + "\n")
+	while True:
+		try:
+			if Cflag:
+				WriteFreq()
+				time.sleep(1)
+				Conn.write("cd /" + "\n")
+				time.sleep(5)
+				WriteMac(cRetnum,0)
+				print 'Enter in snmp command......'
+				SnmpCmd()
+				print '*******************************************'
+				print '**** Finish set MAC & KEY, Good Bye... ****'
+				print '*******************************************'
+				Conn.flush()
+				Conn.close()
+				break
+		except KeyboardInterrupt:
+			print 'exiting'
+			break
+	os._exit(0)
+
 
 '''
 def UpgradeFirmware(Conn):
