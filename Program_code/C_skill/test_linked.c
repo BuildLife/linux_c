@@ -120,18 +120,30 @@ void display(NODE *list)
 
 void reverse(NODE *list)
 {
-	NODE *prev = list;
+	/*NODE *prev = list;
 	NODE *current = NULL;
 	NODE *next = (struct node*)malloc(sizeof(struct node));
+*/
+	NODE *prev = NULL;
+	NODE *current = list;
+	NODE *next = list -> next;
 
-	while(prev != NULL)
+	while(next != NULL)
 	{
-		next = prev -> next;
+		/*next = prev -> next;
+		printf("next = %p\n",next);
+		printf("prev -> next = %p\n",prev -> next);
 		prev -> next = current;
 		current = prev;
 		prev = next;
 		printf("%d,",current -> data);
-		list = current;
+		list = current;*/
+		current -> next = prev;
+		prev = current;
+		current = next;
+		next = next -> next;
+	current -> next = prev;
+	printf("%d,",current -> data);
+	list = current;
 	}
-		
 }
