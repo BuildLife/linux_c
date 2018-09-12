@@ -11,7 +11,7 @@ typedef struct stack{
 void push(struct stack*,int);
 void empty_full(struct stack*);
 void display(struct stack*);
-
+int pop(struct stack*);
 int main()
 {
 	int num = 0;
@@ -27,7 +27,7 @@ int main()
 		switch(num)
 		{
 			case 1:
-	//			pop(s);
+				pop(s);
 			break;
 		
 			case 2:
@@ -64,6 +64,16 @@ void push(struct stack *s,int data)
 		printf("this stack is full\n");
 	else
 		s->value[s->top++] = data;
+}
+
+int pop(struct stack *s)
+{
+	struct stack *newnode;
+	newnode = (stack*)malloc(sizeof(stack));
+	
+	newnode = s;
+	newnode ->  
+
 }
 
 void display(struct stack *s)
