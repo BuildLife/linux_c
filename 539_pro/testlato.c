@@ -31,12 +31,26 @@ int game_of_function(int game_num)
 	else 
 		exit(1);
 
+	int tmp = 0,j = 0;
 
 	printf("Game is %s\n",game_s == 5 ? "539" : "Lato");
 	printf("Balls : ");
 	for(i = 0; i < game_s; i++)
 	{
-		printf("%d,",gets_arr[i]);
+		for(j = 0;j< game_s; j++)
+		{	
+			if(*(gets_arr + i) > *(gets_arr + j))
+			{
+				tmp = *(gets_arr + i);
+				*(gets_arr + i) = *(gets_arr + j);
+				*(gets_arr + j) = tmp;
+			}
+		}
+	}
+	
+	for(j = 0;j<game_s;j++)
+	{
+		printf("%d,",gets_arr[j]);
 	}
 
 	printf("\n");

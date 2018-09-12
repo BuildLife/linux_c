@@ -140,3 +140,29 @@ int main()
 Answer : Value of 1 is 10
 
 /***************************************************************************************************/
+
+
+/**************************** Double Array to get one ********************************************/
+
+#define HCI_sco 0x01
+#define HCI_cmd 0x02
+#define HCI_acl 0x03
+					
+				  //[]  --> means not limit the string of array; ex:[] = "" , [] = "", [] = "",...........[x..] = "y...", ...
+					//8 --> means inside string could not over 8 characters..
+const char hci_data[][8]={
+	[HCI_sco] = "sco",
+	[HCI_cmd] = "cmd",
+	[HCI_acl] = "acl",
+};
+
+/*if */
+printf("%s\n",hci_data[1]); ---> print -> 'sco' <-
+printf("%s\n",hci_data[2]); ---> print -> 'cmd' <-
+printf("%s\n",hci_data[3]); ---> print -> 'acl' <-
+
+
+
+
+
+/***************************************************************************************************/
