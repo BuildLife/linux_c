@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#define TRUE 1
+#define FALSE 0
 #define NELEMS(x)  (sizeof(x)/(sizeof(x)[0]))
 
 int lato_hot_ball[21] = {1,3,8,9,11,15,16,17,23,25,27,28,29,30,32,35,36,40,41,44,46};
@@ -10,6 +12,38 @@ int lato_cold_ball[7] = {4,5,24,26,34,38,48};
 int g539_hot_ball[22] = {2,4,5,7,8,9,10,11,12,15,17,20,22,25,27,29,32,33,34,35,36,38};
 int g539_cold_ball[7] = {3,13,14,23,24,37,39};
 
+
+int f_FirstSecond(int *first, int *second, int len)
+{
+	int i = 0, j = 0;
+	int x = 0, y = 0;
+	int arr[30] = { 0 };
+
+	for(i = 1;i< 40; i++)
+	{
+		if((*(first + x) - i) == 0)
+		{
+			arr[y] = i;
+			y++;	
+		}
+		if((*(second + x) - i) == 0)
+		{
+			arr[y] = i;
+			y++;
+		}
+		x++;
+	}
+
+	x = 0;
+	for(x = 0;x<y;x++)
+	{
+		printf("%d,",arr[x]);
+	}
+	printf("\n");
+
+
+	return TRUE;
+}
 
 int game_of_function(int game_num)
 {
@@ -20,13 +54,11 @@ int game_of_function(int game_num)
 	gets_arr = (int *)malloc(10 * sizeof(int));
 	if(game_num == 1)
 	{
-		game_s = 5;
-		f_539(gets_arr,game_s);
+		game_s = f_539(gets_arr,5);
 	}
 	else if(game_num == 2)
 	{
-		game_s = 6;
-		lato_f(gets_arr,game_s);
+		game_s = f_lato(gets_arr,5);
 	}
 	else 
 		exit(1);
@@ -58,7 +90,7 @@ int game_of_function(int game_num)
 	return 0;
 }
 
-int lato_f(int *gets,int s)
+int f_lato(int *gets,int s)
 {	
 	int x = 0, y = 0;
 	int ball_num = 0;
@@ -84,7 +116,7 @@ int lato_f(int *gets,int s)
 	}
 		ball_num = rand()%NELEMS(lato_cold_ball);
 		*(gets + (s - 1)) = lato_cold_ball[ball_num];
-	return 0;
+	return s;
 }
 
 int f_539(int *gets,int s)
@@ -114,7 +146,7 @@ int f_539(int *gets,int s)
 	}
 		ball_num = rand()%NELEMS(g539_cold_ball);
 		*(gets + (s - 1)) = g539_cold_ball[ball_num];
-	return 0;
+	return s;
 }
 
 
@@ -122,6 +154,12 @@ int f_539(int *gets,int s)
 int main()
 {
 	int ch_t = 0;
+	int loop;
+	int fir[5];
+	int seco[5];
+	
+//	fir = (int *)malloc(10*sizeof(int));
+//	seco = (int *)malloc(10*sizeof(int));
 
 	while(1)
 	{	
@@ -129,8 +167,21 @@ int main()
 		printf("1. 539\n");
 		printf("2. lato\n");
 		printf("3. exit\n");
+
 		scanf("%d",&ch_t);
+
+		printf("Please input last week numbers\n");
+		for(loop = 0; loop < 5; loop++)
+			scanf("%d" ,&(fir[loop]));
+		
+		printf("Please input last before week numbers\n");
+		for(loop = 0; loop < 5; loop++)
+			scanf("%d" ,&(seco[loop]));
+		
+		f_FirstSecond(fir, seco, 5);
+		
 		game_of_function(ch_t);
 	}
+
 	return 0;
 }
